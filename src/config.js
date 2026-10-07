@@ -8,9 +8,9 @@
 //   3. Set testing: false
 // ---------------------------------------------------------------------------
 export const ADS = {
-  testing: true,
-  interstitialId: 'ca-app-pub-3940256099942544/1033173712',
-  rewardedId: 'ca-app-pub-3940256099942544/5224354917',
+  testing: false,
+  interstitialId: 'ca-app-pub-8983296148880903/3702654782',
+  rewardedId: 'ca-app-pub-8983296148880903/8828567964',
   interstitialFromLevel: 6, // no interstitials during the first levels
   interstitialEveryNLevels: 3,
   interstitialCooldownSec: 120,

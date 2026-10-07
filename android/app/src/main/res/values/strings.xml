@@ -5,7 +5,7 @@
     <string name="package_name">com.mehmetyusuf.commutecraze</string>
     <string name="custom_url_scheme">com.mehmetyusuf.commutecraze</string>
     <!-- AdMob App ID. This is Google's TEST app id; replace with your own (ca-app-pub-8983296148880903~XXXXXXXXXX) -->
-    <string name="admob_app_id">ca-app-pub-3940256099942544~3347511713</string>
+    <string name="admob_app_id">ca-app-pub-8983296148880903~8188694706</string>
     <!-- Google Play Games project id (Play Console > Play Games Services > Configuration). "0" = disabled -->
     <string name="game_services_project_id" translatable="false">0</string>
 </resources>
