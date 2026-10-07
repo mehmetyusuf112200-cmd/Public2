@@ -1,0 +1,27 @@
+Dil / Language: Vietnamca (vi)
+
+App name (max 30):
+Commute Craze: Bus Jam Puzzle
+
+Short description (max 80):
+Gỡ kẹt bãi đỗ và đưa hành khách lên xe buýt đúng màu! Trò xếp màu thư giãn.
+
+Full description (max 4000):
+Bãi đỗ xe kẹt cứng và hành khách đang chờ ở trạm! 🚌
+
+Trong Commute Craze, mỗi xe hướng về một phía. Chạm vào xe có đường trống và nó sẽ chạy tới trạm. Hành khách cùng màu tự lên xe, xe đầy sẽ khởi hành!
+
+🧩 CÁCH CHƠI
+• Chạm vào những xe có lối ra trống
+• Đưa mỗi hành khách lên xe cùng màu
+• Nếu trạm đầy, bạn thua – hãy tính thứ tự thật khéo!
+
+⭐ TÍNH NĂNG
+• Hơn 400 màn chơi, màn nào cũng có lời giải
+• Màn Khó và Siêu khó với giới hạn lượt, đếm giờ và xe bị đóng băng
+• 6 thế giới đầy màu sắc: thành phố, bãi biển, núi tuyết, phố đêm, mùa thu và sa mạc
+• Quà mỗi ngày, vòng quay may mắn, câu đố mỗi ngày và nhiệm vụ
+• Vật phẩm hỗ trợ: Cần cẩu, Sắp xếp và +Chỗ đỗ
+• Chơi không cần mạng, nhạc thư giãn và đồ họa 3D dễ thương
+
+Tải ngay và trở thành bậc thầy giao thông!

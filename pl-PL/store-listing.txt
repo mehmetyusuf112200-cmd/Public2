@@ -1,0 +1,27 @@
+Dil / Language: Lehçe (pl-PL)
+
+App name (max 30):
+Commute Craze: Bus Jam Puzzle
+
+Short description (max 80):
+Rozładuj korek i wsadź pasażerów do autobusów ich koloru! Relaksująca gra.
+
+Full description (max 4000):
+Parking jest zakorkowany, a pasażerowie czekają na przystanku! 🚌
+
+W Commute Craze każdy pojazd jest skierowany w jedną stronę. Dotknij pojazdu z wolną drogą, a pojedzie na przystanek. Pasażerowie w tym samym kolorze wsiadają sami, a pełne pojazdy odjeżdżają!
+
+🧩 JAK GRAĆ
+• Dotykaj pojazdów z wolnym wyjazdem
+• Wsadzaj pasażerów do pojazdów ich koloru
+• Gdy przystanek się zapełni, przegrywasz – zaplanuj kolejność!
+
+⭐ CECHY
+• Ponad 400 poziomów, każdy do rozwiązania
+• Trudne i bardzo trudne poziomy z limitem ruchów, czasem i zamrożonymi autami
+• 6 kolorowych światów: miasto, plaża, ośnieżone szczyty, miasto nocą, jesień i pustynia
+• Codzienne nagrody, koło fortuny, zagadka dnia i misje
+• Wzmocnienia: Dźwig, Sortuj i +Miejsce
+• Graj offline, relaksująca muzyka i urocza grafika 3D
+
+Pobierz teraz i zostań mistrzem ruchu drogowego!

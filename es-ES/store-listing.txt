@@ -1,0 +1,27 @@
+Dil / Language: İspanyolca (es-ES)
+
+App name (max 30):
+Commute Craze: Bus Jam Puzzle
+
+Short description (max 80):
+¡Despeja el atasco y sube a cada pasajero a su bus! Un puzle relajante.
+
+Full description (max 4000):
+¡El aparcamiento está atascado y los pasajeros esperan en la parada! 🚌
+
+En Commute Craze cada vehículo apunta en una dirección. Toca un vehículo con el camino libre y conducirá hasta la parada. Los pasajeros del mismo color suben solos y los vehículos llenos se marchan.
+
+🧩 CÓMO JUGAR
+• Toca los vehículos que tengan salida libre
+• Sube a cada pasajero al vehículo de su color
+• Si la parada se llena, pierdes: ¡planifica el orden!
+
+⭐ CARACTERÍSTICAS
+• Más de 400 niveles, todos con solución
+• Niveles Difícil y Muy difícil con límite de movimientos, tiempo y coches congelados
+• 6 mundos de colores: ciudad, playa, montañas nevadas, ciudad nocturna, otoño y desierto
+• Premios diarios, ruleta de la suerte, puzle del día y misiones
+• Potenciadores Grúa, Ordenar y +Plaza
+• Juega sin conexión, música relajante y gráficos 3D adorables
+
+¡Descárgalo y conviértete en el maestro del tráfico!

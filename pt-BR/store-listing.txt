@@ -1,0 +1,27 @@
+Dil / Language: Portekizce (Brezilya) (pt-BR)
+
+App name (max 30):
+Commute Craze: Bus Jam Puzzle
+
+Short description (max 80):
+Desfaça o engarrafamento e leve cada passageiro ao ônibus da sua cor! Relaxante.
+
+Full description (max 4000):
+O estacionamento está lotado e os passageiros esperam no ponto! 🚌
+
+Em Commute Craze cada veículo aponta para uma direção. Toque num veículo com caminho livre e ele vai até o ponto. Passageiros da mesma cor embarcam sozinhos e os veículos cheios partem!
+
+🧩 COMO JOGAR
+• Toque nos veículos com saída livre
+• Leve cada passageiro ao veículo da sua cor
+• Se o ponto encher, você perde – planeje a ordem!
+
+⭐ RECURSOS
+• Mais de 400 fases, todas com solução
+• Fases Difícil e Muito difícil com limite de movimentos, tempo e carros congelados
+• 6 mundos coloridos: cidade, praia, montanhas nevadas, cidade à noite, outono e deserto
+• Prêmios diários, roleta da sorte, quebra-cabeça do dia e missões
+• Reforços Guindaste, Ordenar e +Vaga
+• Jogue offline, música relaxante e gráficos 3D fofos
+
+Baixe agora e seja o mestre do trânsito!

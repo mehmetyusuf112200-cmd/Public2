@@ -1,0 +1,27 @@
+Dil / Language: Fransızca (fr-FR)
+
+App name (max 30):
+Commute Craze: Bus Jam Puzzle
+
+Short description (max 80):
+Débloque le parking et fais monter chaque passager dans le bon bus ! Puzzle zen.
+
+Full description (max 4000):
+Le parking est bloqué et les passagers attendent à l'arrêt ! 🚌
+
+Dans Commute Craze, chaque véhicule pointe dans une direction. Touche un véhicule dont le chemin est libre et il file à l'arrêt. Les passagers de la même couleur montent tout seuls et les véhicules pleins s'en vont !
+
+🧩 COMMENT JOUER
+• Touche les véhicules qui ont une sortie libre
+• Fais monter chaque passager dans le véhicule de sa couleur
+• Si l'arrêt est plein, tu perds : réfléchis à l'ordre !
+
+⭐ POINTS FORTS
+• Plus de 400 niveaux, tous solubles
+• Niveaux Difficile et Très difficile avec coups limités, chrono et voitures gelées
+• 6 mondes colorés : ville, plage, montagnes enneigées, ville de nuit, automne et désert
+• Cadeaux quotidiens, roue de la chance, puzzle du jour et missions
+• Bonus Grue, Trier et +Place
+• Jouable hors ligne, musique relaxante et jolis graphismes 3D
+
+Télécharge-le et deviens le roi du trafic !

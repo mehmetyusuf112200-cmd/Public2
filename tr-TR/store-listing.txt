@@ -1,0 +1,27 @@
+Dil / Language: Türkçe (tr-TR)
+
+App name (max 30):
+Commute Craze: Bus Jam Puzzle
+
+Short description (max 80):
+Otoparkı aç, araçları çıkar, yolcuları doğru renge bindir! Rahatlatan bulmaca.
+
+Full description (max 4000):
+Otopark tıka basa dolu ve durakta yolcular bekliyor! 🚌
+
+Commute Craze'de her aracın gittiği yön bellidir. Önü açık olan araca dokun, otoparktan çıkıp durağa gelsin. Aynı renkteki yolcular otomatik biner, dolan araç yola koyulur!
+
+🧩 NASIL OYNANIR
+• Yolu açık olan araçlara dokun
+• Yolcuları kendi renklerindeki araca bindir
+• Durak dolarsa kaybedersin – sırayı iyi düşün!
+
+⭐ ÖZELLİKLER
+• 400'den fazla bölüm, hepsi çözülebilir
+• Hamle sınırı, süre ve donmuş araçlarla Zor ve Çok Zor bölümler
+• 6 renkli dünya: şehir, sahil, karlı dağlar, gece şehri, sonbahar ve çöl
+• Günlük ödüller, şans çarkı, günün bulmacası ve görevler
+• Vinç, Sırala ve +Durak güçlendiricileri
+• İnternetsiz oyna, rahatlatan müzik ve sevimli 3D grafikler
+
+Hemen indir, trafiğin en iyi ustası sen ol!

@@ -1,0 +1,27 @@
+Dil / Language: Çekçe (cs-CZ)
+
+App name (max 30):
+Commute Craze: Bus Jam Puzzle
+
+Short description (max 80):
+Rozjeď zácpu na parkovišti a posaď cestující do autobusu jejich barvy!
+
+Full description (max 4000):
+Parkoviště je ucpané a cestující čekají na zastávce! 🚌
+
+V Commute Craze míří každé vozidlo jedním směrem. Ťukni na vozidlo s volnou cestou a pojede na zastávku. Cestující stejné barvy nastoupí sami a plná vozidla odjedou!
+
+🧩 JAK HRÁT
+• Ťukej na vozidla s volným výjezdem
+• Posaď každého cestujícího do vozidla jeho barvy
+• Když se zastávka zaplní, prohráváš – naplánuj pořadí!
+
+⭐ VLASTNOSTI
+• Přes 400 úrovní, všechny řešitelné
+• Těžké a velmi těžké úrovně s limitem tahů, časem a zamrzlými auty
+• 6 barevných světů: město, pláž, zasněžené hory, noční město, podzim a poušť
+• Denní odměny, kolo štěstí, hádanka dne a mise
+• Bonusy: Jeřáb, Seřadit a +Místo
+• Hraj offline, uklidňující hudba a roztomilá 3D grafika
+
+Stáhni si ji a staň se mistrem dopravy!
