@@ -12,14 +12,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
@@ -42,7 +42,8 @@ jobs:
           VERSION_NAME: 1.0.${{ github.run_number }}
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon assembleDebug bundleRelease
+          set -o pipefail
+          ./gradlew --no-daemon --stacktrace assembleDebug bundleRelease 2>&1 | tee ../gradle.log
 
       - name: Collect outputs
         run: |
@@ -64,3 +65,15 @@ jobs:
             Test APK: telefona indirip kurabilirsin (Bilinmeyen kaynaklara izin ver).
             AAB dosyası imzasızdır; Play Console'a imzalanmış sürüm yüklenir.
           files: out/*
+
+      - name: Save build log on failure
+        if: failure()
+        run: |
+          git config user.name ci && git config user.email ci@users.noreply.github.com
+          tail -c 60000 gradle.log > /tmp/build.log 2>/dev/null || echo "no gradle log" > /tmp/build.log
+          git checkout --orphan ci-logs
+          git rm -rfq --cached . >/dev/null
+          cp /tmp/build.log build.log
+          git add build.log
+          git commit -qm "build log ${{ github.run_number }}"
+          git push -f origin ci-logs
