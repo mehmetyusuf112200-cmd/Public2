@@ -3,7 +3,7 @@ import '@fontsource/baloo-2/800.css';
 import './style.css';
 import { Game, generateLevel, levelParams, levelMechanics, MAX_LEVEL } from './core/logic.js';
 import { Renderer } from './render.js';
-import { t, setLang, getLang, fmt } from './i18n.js';
+import { t, setLang, getLang, fmt, LANGS, detectLang, dayLabel } from './i18n.js';
 import { sfx, unlockAudio, setSfx, setMusic, suspendAudio, resumeAudio, audioState, startSong } from './audio.js';
 import { loadSave, writeSave, haptics, initAds, maybeInterstitial, showRewarded, showPrivacyOptions, onBackButton, onPause, isNative } from './platform.js';
 import { ECONOMY, PRIVACY_URL } from './config.js';
@@ -144,14 +144,14 @@ function applySettings() {
   setSfx(state.settings.sfx);
   setMusic(state.settings.music);
   haptics.enabled = state.settings.haptic;
-  if (state.settings.lang) setLang(state.settings.lang);
-  document.documentElement.lang = getLang();
   $$('[data-t]').forEach((el) => (el.textContent = t(el.dataset.t)));
   R.setStyle(state.style);
 }
 
-function openModal(html, { onClose } = {}) {
-  $('#modalCard').innerHTML = html;
+function openModal(html, { onClose, tone = 'sun' } = {}) {
+  const card = $('#modalCard');
+  card.className = 'card tone-' + tone;
+  card.innerHTML = '<div class="sparkles"><i></i><i></i><i></i><i></i><i></i><i></i></div>' + html;
   $('#modal').classList.remove('hidden');
   const cx = $('#modalCard .closex');
   if (cx)
@@ -168,25 +168,11 @@ function modalOpen() {
   return !$('#modal').classList.contains('hidden');
 }
 
-function openSettings() {
-  const tg = (k) => `<button class="toggle ${state.settings[k] ? 'on' : ''}" data-k="${k}"></button>`;
-  openModal(`
-    <button class="closex">✕</button>
-    <h2>${t('settings')}</h2>
-    <div style="margin-top:12px">
-      <div class="row">${t('sound')} ${tg('sfx')}</div>
-      <div class="row">${t('music')} ${tg('music')}</div>
-      <div class="row">${t('vibration')} ${tg('haptic')}</div>
-      <div class="row">${t('language')}
-        <div class="seg"><button data-l="tr" class="${getLang() === 'tr' ? 'on' : ''}">TR</button><button data-l="en" class="${getLang() === 'en' ? 'on' : ''}">EN</button></div>
-      </div>
-    </div>
-    <button class="btn blue" id="bRestore">${t('restore')}</button>
-    <button class="linkbtn" id="bPriv">${t('privacy')}</button>
-    ${isNative ? `<br><button class="linkbtn" id="bPrivOpt">${t('privacyOptions')}</button>` : ''}
-    <div class="note">Commute Craze v${__APP_VERSION__}</div>
-  `);
-  $$('.toggle', $('#modalCard')).forEach((b) => {
+function chip(k, icon, label) {
+  return `<button class="chip ${state.settings[k] ? 'on' : ''}" data-k="${k}"><span class="ci">${icon}</span><span class="cl">${label}</span><span class="cs"></span></button>`;
+}
+function bindChips(after) {
+  $$('.chip', $('#modalCard')).forEach((b) => {
     b.onclick = () => {
       const k = b.dataset.k;
       state.settings[k] = !state.settings[k];
@@ -194,21 +180,62 @@ function openSettings() {
       applySettings();
       persist();
       if (k === 'sfx' && state.settings.sfx) sfx.tap();
+      if (k === 'haptic' && state.settings.haptic) haptics.medium();
+      after && after(k);
     };
   });
-  $$('.seg button', $('#modalCard')).forEach((b) => {
-    b.onclick = () => {
-      state.settings.lang = b.dataset.l;
-      applySettings();
-      persist();
-      renderTab();
-      openSettings();
-    };
-  });
+}
+
+function openSettings() {
+  const cur = LANGS.find((l) => l.code === getLang()) || LANGS[0];
+  openModal(
+    `
+    <button class="closex">✕</button>
+    <div class="mhead"><span class="mico">⚙️</span><h2>${t('settings')}</h2><p>${t('settingsSub')}</p></div>
+    <div class="chips">${chip('sfx', '🔊', t('sound'))}${chip('music', '🎵', t('music'))}${chip('haptic', '📳', t('vibration'))}</div>
+    <button class="langbtn" id="bLang"><span class="lf">${cur.flag}</span><span class="ln"><small>${t('language')}</small>${cur.name}</span><span class="la">›</span></button>
+    <button class="btn blue" id="bRestore">🛒 ${t('restore')}</button>
+    <div class="links"><button class="linkbtn" id="bPriv">${t('privacy')}</button>
+    ${isNative ? `<button class="linkbtn" id="bPrivOpt">${t('privacyOptions')}</button>` : ''}</div>
+    <div class="note">Commute Craze v${__APP_VERSION__}</div>
+  `,
+    { tone: 'sky' }
+  );
+  bindChips();
+  $('#bLang').onclick = openLanguages;
   $('#bRestore').onclick = restorePurchases;
   $('#bPriv').onclick = () => window.open(PRIVACY_URL, '_blank');
   const po = $('#bPrivOpt');
   if (po) po.onclick = () => showPrivacyOptions();
+}
+
+function openLanguages() {
+  sfx.click();
+  const items = LANGS.map(
+    (l) => `<button class="langitem ${l.code === getLang() ? 'on' : ''}" data-l="${l.code}"><span class="lf">${l.flag}</span><span>${l.name}</span></button>`
+  ).join('');
+  openModal(
+    `
+    <button class="closex">✕</button>
+    <div class="mhead"><span class="mico">🌍</span><h2>${t('chooseLanguage')}</h2></div>
+    <div class="langgrid">${items}</div>`,
+    { tone: 'mint', onClose: openSettings }
+  );
+  $$('.langitem', $('#modalCard')).forEach((b) => {
+    b.onclick = async () => {
+      sfx.tap();
+      state.settings.lang = b.dataset.l;
+      persist();
+      await setLang(b.dataset.l);
+      applySettings();
+      if (inGame) updateHud();
+      else {
+        renderMenuTop();
+        renderTab();
+      }
+      openSettings();
+    };
+  });
 }
 
 async function rewarded() {
@@ -339,7 +366,7 @@ function renderHome(body) {
         ${M.weekendEvent() ? `<div class="eventBanner">🎉 ${t('weekendEvent')}</div>` : ''}
         <button class="chestbar ${M.chestReady(state) ? 'ready' : ''}" id="sChest"><span class="cb-ico">${M.chestReady(state) ? '🎁' : '⭐'}</span>
           <span class="cb-bar"><span style="width:${chestPct}%"></span><b>${M.chestReady(state) ? t('openChest') : `${state.chestStars || 0}/${M.CHEST_STARS}`}</b></span></button>
-        <div class="chapterTag">${t('chapter')} ${chapterOf(state.level) + 1} · ${theme.name[getLang()]}</div>
+        <div class="chapterTag">${t('chapter')} ${chapterOf(state.level) + 1} · ${t('themes')[theme.id]}</div>
         <div class="strip">${strip.join('')}</div>
         ${mech ? `<div class="mchips">${mech}</div>` : ''}
         <button class="big ${lp.difficulty}" id="btnPlay"><small>${t('level')} ${state.level}${lp.difficulty !== 'normal' ? ' · ' + t(lp.difficulty) : ''}</small>${t('play')}${streak ? `<span class="flame">🔥${streak}</span>` : ''}</button>
@@ -381,7 +408,7 @@ function openDailyPuzzle() {
     <p>${t('dcDesc')}</p>
     <div><span class="reward"><span class="coin"></span>${dc.reward}</span></div>
     ${dc.streak ? `<p>🔥 ${t('dcStreak').replace('{n}', dc.streak)}</p>` : ''}
-    ${dc.done ? `<p><b>✔ ${t('dcDone')}</b></p>` : `<button class="btn purple" id="dcPlay">${t('play')}</button>`}`);
+    ${dc.done ? `<p><b>✔ ${t('dcDone')}</b></p>` : `<button class="btn purple" id="dcPlay">${t('play')}</button>`}`, { tone: 'grape' });
   const b = $('#dcPlay');
   if (b) b.onclick = () => startLevel(M.dcLevelNum(), { daily: true });
 }
@@ -403,12 +430,135 @@ function difficultyOf(n) {
   return sp === 2 && n >= 10 ? 'superhard' : sp >= 1 && n >= 5 ? 'hard' : 'normal';
 }
 
+/* ---------- world map scenery (SVG) ---------- */
+const MAP_W = 420;
+const ROW_H = 76;
+const ROW_OFF = [-70, -25, 45, 10];
+const SCENE = {
+  city: { road: '#9aa3b5', edge: '#6f7a90', ground: ['#9be07f', '#7fcf6a'], houses: ['#ff8a65', '#ffd166', '#6ec6ff', '#ce93d8', '#ffab91', '#a5d6a7'], roof: ['#d84315', '#8d4f3a', '#5c6bc0', '#c2185b'], tree: 'round' },
+  beach: { road: '#f6dfae', edge: '#d9b57a', ground: ['#ffe9b8', '#f4d79a'], houses: ['#4fc3f7', '#fff59d', '#ff8a80', '#ffffff', '#80deea'], roof: ['#ff7043', '#29b6f6', '#ef5350', '#26a69a'], tree: 'palm' },
+  snow: { road: '#c3cfe2', edge: '#97a6c0', ground: ['#ffffff', '#e6f0fa'], houses: ['#b71c1c', '#8d6e63', '#1565c0', '#2e7d32', '#f9a825'], roof: ['#5d4037', '#37474f', '#6d4c41'], tree: 'pine' },
+  night: { road: '#56607e', edge: '#3a4260', ground: ['#3e6e57', '#2f5a43'], houses: ['#3949ab', '#5e35b1', '#00838f', '#455a64', '#6a1b9a'], roof: ['#1a237e', '#311b92', '#263238'], tree: 'round', night: true },
+  autumn: { road: '#c79a6a', edge: '#9c7247', ground: ['#e8c873', '#d4b25a'], houses: ['#fff3e0', '#ffcc80', '#bcaaa4', '#ffe0b2'], roof: ['#d84315', '#bf360c', '#6d4c41'], tree: 'autumn' },
+  desert: { road: '#e2bf89', edge: '#b98f55', ground: ['#f6dcae', '#ecc88e'], houses: ['#e0a96d', '#f1d5a5', '#d7b588', '#ffe0b2'], roof: ['#c68b59', '#a1663a'], tree: 'cactus', flat: true },
+};
+
+function svgHouse(x, y, sc, rnd) {
+  const body = sc.houses[Math.floor(rnd() * sc.houses.length)];
+  const roof = sc.roof[Math.floor(rnd() * sc.roof.length)];
+  const w = 30 + rnd() * 10,
+    h = 22 + rnd() * 8;
+  const lit = sc.night ? '#ffe082' : '#bfe8ff';
+  const win2 = sc.night && rnd() < 0.4 ? '#2c3550' : lit;
+  let g = `<ellipse cx="${x}" cy="${y + 2}" rx="${w * 0.62}" ry="5" fill="rgba(0,0,0,.15)"/>`;
+  g += `<rect x="${x - w / 2}" y="${y - h}" width="${w}" height="${h}" rx="3" fill="${body}" stroke="rgba(0,0,0,.18)" stroke-width="1.5"/>`;
+  if (sc.flat) {
+    g += `<rect x="${x - w / 2 - 2}" y="${y - h - 5}" width="${w + 4}" height="6" rx="2" fill="${roof}"/>`;
+    if (rnd() < 0.5) g += `<path d="M${x - 7} ${y - h - 5} a7 7 0 0 1 14 0z" fill="${roof}"/>`;
+  } else {
+    g += `<path d="M${x - w / 2 - 4} ${y - h + 1} L${x} ${y - h - 16} L${x + w / 2 + 4} ${y - h + 1}z" fill="${roof}" stroke="rgba(0,0,0,.2)" stroke-width="1.5" stroke-linejoin="round"/>`;
+    g += `<rect x="${x + w / 4}" y="${y - h - 14}" width="5" height="9" fill="${roof}"/>`;
+    if (sc.tree === 'pine') g += `<path d="M${x - w / 2 - 2} ${y - h - 1} L${x} ${y - h - 15} L${x + w / 2 + 2} ${y - h - 1} Q${x} ${y - h - 6} ${x - w / 2 - 2} ${y - h - 1}z" fill="#fff"/>`;
+  }
+  g += `<rect x="${x - 4}" y="${y - 11}" width="8" height="11" rx="2" fill="#7b4a2e"/>`;
+  g += `<rect x="${x - w / 2 + 4}" y="${y - h + 5}" width="7" height="7" rx="1.5" fill="${lit}" stroke="#fff" stroke-width="1"/>`;
+  g += `<rect x="${x + w / 2 - 11}" y="${y - h + 5}" width="7" height="7" rx="1.5" fill="${win2}" stroke="#fff" stroke-width="1"/>`;
+  return g;
+}
+
+function svgTree(x, y, type, rnd) {
+  const s = 0.8 + rnd() * 0.5;
+  let g = `<ellipse cx="${x}" cy="${y + 2}" rx="${12 * s}" ry="${4 * s}" fill="rgba(0,0,0,.15)"/>`;
+  if (type === 'palm') {
+    g += `<path d="M${x} ${y} Q${x + 4 * s} ${y - 18 * s} ${x + 2 * s} ${y - 34 * s}" stroke="#8d6e4a" stroke-width="${4 * s}" fill="none" stroke-linecap="round"/>`;
+    for (const a of [-60, -20, 20, 60, 150, 200]) {
+      const r = (a * Math.PI) / 180;
+      g += `<path d="M${x + 2 * s} ${y - 34 * s} q${Math.cos(r) * 10 * s} ${-6 * s} ${Math.cos(r) * 18 * s} ${Math.sin(r) * 6 * s + 6 * s}" stroke="#3fbf5a" stroke-width="${4.5 * s}" fill="none" stroke-linecap="round"/>`;
+    }
+  } else if (type === 'pine') {
+    g += `<rect x="${x - 2 * s}" y="${y - 8 * s}" width="${4 * s}" height="${8 * s}" fill="#6d4c41"/>`;
+    for (let i = 0; i < 3; i++) {
+      const w = (14 - i * 3) * s,
+        top = y - (14 + i * 9) * s;
+      g += `<path d="M${x - w} ${top + 12 * s} L${x} ${top - 6 * s} L${x + w} ${top + 12 * s}z" fill="#2e7d4f"/>`;
+      g += `<path d="M${x - w * 0.5} ${top + 3 * s} L${x} ${top - 6 * s} L${x + w * 0.5} ${top + 3 * s}z" fill="#fff"/>`;
+    }
+  } else if (type === 'cactus') {
+    g += `<rect x="${x - 4 * s}" y="${y - 28 * s}" width="${8 * s}" height="${28 * s}" rx="${4 * s}" fill="#43a047"/>`;
+    g += `<path d="M${x - 4 * s} ${y - 14 * s} h${-6 * s} v${-9 * s}" stroke="#43a047" stroke-width="${5 * s}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+    g += `<path d="M${x + 4 * s} ${y - 18 * s} h${6 * s} v${-7 * s}" stroke="#43a047" stroke-width="${5 * s}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+    if (rnd() < 0.5) g += `<circle cx="${x}" cy="${y - 29 * s}" r="${3 * s}" fill="#ff5c8a"/>`;
+  } else {
+    const cols = type === 'autumn' ? ['#ff7a2f', '#ffb000', '#e2553d'] : ['#4caf50', '#66c75f', '#3d9b46'];
+    const c = cols[Math.floor(rnd() * cols.length)];
+    g += `<rect x="${x - 2.5 * s}" y="${y - 12 * s}" width="${5 * s}" height="${12 * s}" rx="2" fill="#7b5236"/>`;
+    g += `<circle cx="${x}" cy="${y - 20 * s}" r="${12 * s}" fill="${c}"/><circle cx="${x - 7 * s}" cy="${y - 14 * s}" r="${7 * s}" fill="${c}"/><circle cx="${x + 7 * s}" cy="${y - 15 * s}" r="${8 * s}" fill="${c}"/>`;
+    g += `<circle cx="${x - 4 * s}" cy="${y - 24 * s}" r="${4 * s}" fill="rgba(255,255,255,.25)"/>`;
+    if (type !== 'autumn' && rnd() < 0.3) g += `<circle cx="${x + 5 * s}" cy="${y - 19 * s}" r="${2 * s}" fill="#ff5252"/><circle cx="${x - 6 * s}" cy="${y - 16 * s}" r="${2 * s}" fill="#ff5252"/>`;
+  }
+  return g;
+}
+
+function svgFlowers(x, y, rnd, night) {
+  let g = '';
+  const cols = night ? ['#ffe082', '#80deea'] : ['#ffffff', '#ffe066', '#ff8fb8', '#b39ddb'];
+  for (let i = 0; i < 4; i++) g += `<circle cx="${x + (rnd() - 0.5) * 22}" cy="${y + (rnd() - 0.5) * 10}" r="2.6" fill="${cols[Math.floor(rnd() * cols.length)]}"/>`;
+  return g;
+}
+
+function mapScene(theme, rowsCount, chapter) {
+  const sc = SCENE[theme.id] || SCENE.city;
+  const H = 20 + rowsCount * ROW_H;
+  let seed = chapter * 7919 + 17;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const pts = [];
+  for (let i = 0; i < rowsCount; i++) pts.push([MAP_W / 2 + ROW_OFF[i % 4], 48 + i * ROW_H]);
+  // extend the road above and below the chapter
+  const top = [pts[0][0], -10],
+    bottom = [pts[pts.length - 1][0], H + 10];
+  const all = [top, ...pts, bottom];
+  let d = `M${all[0][0]} ${all[0][1]}`;
+  for (let i = 1; i < all.length; i++) {
+    const [x0, y0] = all[i - 1],
+      [x1, y1] = all[i];
+    const my = (y0 + y1) / 2;
+    d += ` C${x0} ${my} ${x1} ${my} ${x1} ${y1}`;
+  }
+  let deco = '';
+  const items = [];
+  for (let i = 0; i < rowsCount; i++) {
+    const y = 48 + i * ROW_H + 26;
+    for (const side of [0, 1]) {
+      if (rnd() < 0.15) continue;
+      const x = side === 0 ? 34 + rnd() * 52 : MAP_W - 34 - rnd() * 52;
+      const r = rnd();
+      items.push({ y, x, kind: r < 0.55 ? 'house' : r < 0.92 ? 'tree' : 'flowers' });
+      if (rnd() < 0.45) items.push({ y: y - 34, x: side === 0 ? 14 + rnd() * 40 : MAP_W - 14 - rnd() * 40, kind: rnd() < 0.7 ? 'tree' : 'flowers' });
+    }
+    if (rnd() < 0.5) items.push({ y: y - 30, x: MAP_W / 2 + ROW_OFF[i % 4] + (rnd() < 0.5 ? -48 : 48), kind: 'flowers' });
+  }
+  items.sort((a, b) => a.y - b.y);
+  const wrap = (x, y, k, inner) => `<g transform="translate(${x} ${y}) scale(${k}) translate(${-x} ${-y})">${inner}</g>`;
+  for (const it of items) {
+    if (it.kind === 'house') deco += wrap(it.x, it.y, 1.55, svgHouse(it.x, it.y, sc, rnd));
+    else if (it.kind === 'tree') deco += wrap(it.x, it.y, 1.5, svgTree(it.x, it.y, sc.tree, rnd));
+    else deco += wrap(it.x, it.y, 1.4, svgFlowers(it.x, it.y, rnd, sc.night));
+  }
+  return `<svg class="scene" width="${MAP_W}" height="${H}" viewBox="0 0 ${MAP_W} ${H}" xmlns="http://www.w3.org/2000/svg">
+    <path d="${d}" stroke="${sc.edge}" stroke-width="36" fill="none" stroke-linecap="round"/>
+    <path d="${d}" stroke="${sc.road}" stroke-width="28" fill="none" stroke-linecap="round"/>
+    <path d="${d}" stroke="rgba(255,255,255,.75)" stroke-width="3" stroke-dasharray="10 12" fill="none"/>
+    ${deco}</svg>`;
+}
+
 function renderMap(body) {
   const cur = state.level;
   const lastChapter = Math.ceil(MAX_LEVEL / CHAPTER_SIZE) - 1;
-  let html = '<div class="mapwrap">';
+  const ICON = { city: '🏙️', beach: '🏖️', snow: '🏔️', night: '🌃', autumn: '🍂', desert: '🏜️' };
+  let html = `<div class="mapwrap"><div class="maptitle">🗺️ ${t('worldMap')}</div>`;
   for (let c = lastChapter; c >= 0; c--) {
     const theme = THEMES[c % THEMES.length];
+    const sc = SCENE[theme.id] || SCENE.city;
     const start = c * CHAPTER_SIZE + 1;
     const end = start + CHAPTER_SIZE - 1;
     let rows = '';
@@ -422,8 +572,10 @@ function renderMap(body) {
       const mi = n >= 7 ? mechOf(n) : '';
       rows += `<div class="noderow"><button class="node ${cls}" data-n="${n}" ${isCur ? 'id="curNode"' : ''}>${n === end && locked ? '🎁' : n}${starsHtml}${mi ? `<span class="nmech">${mi}</span>` : ''}</button></div>`;
     }
-    html += `<div class="chapterHead" style="background:${theme.map[1]}">${t('chapter')} ${c + 1}<small>${theme.name[getLang()]}</small></div>
-      <div class="path" style="background:${theme.map[0]}55">${rows}</div>`;
+    const lockedCh = start > cur;
+    html += `<div class="mapch ${lockedCh ? 'dim' : ''}" style="background:linear-gradient(${sc.ground[0]}, ${sc.ground[1]})">
+      <div class="chapterHead" style="background:linear-gradient(${theme.map[1]}, ${theme.map[1]}dd)"><span class="ch-ico">${ICON[theme.id] || '🗺️'}</span>${t('chapter')} ${c + 1}<small>${t('themes')[theme.id]}</small></div>
+      <div class="path">${mapScene(theme, CHAPTER_SIZE, c)}${rows}</div></div>`;
   }
   html += '</div>';
   body.innerHTML = html;
@@ -573,8 +725,7 @@ function renderMissions(body) {
         <div class="it"><b>${t('mission')[m.type]}</b><span>${m.progress}/${m.target}</span><div class="mbar"><div style="width:${(m.progress / m.target) * 100}%"></div></div></div>${btn}</div>`;
       })
       .join('');
-    content = `<div class="panel"><h3>${t('dailyMissions')} <small>⏱ ${t('resetsIn')} ${hh}s ${mm}d</small></h3>${content}</div>`;
-    if (getLang() === 'en') content = content.replace(`${hh}s ${mm}d`, `${hh}h ${mm}m`);
+    content = `<div class="panel"><h3>${t('dailyMissions')} <small>⏱ ${t('resetsIn')} ${t('hm').replace('{h}', hh).replace('{m}', mm)}</small></h3>${content}</div>`;
   } else {
     content = M.ACHIEVEMENTS.map((a) => {
       const v = Math.min(a.target, M.achValue(state, a));
@@ -674,7 +825,7 @@ function openDaily() {
   const days = M.DAILY_REWARDS.map((r, i) => {
     const done = st.available ? i < st.dayIndex : i <= st.dayIndex;
     const today = st.available && i === st.dayIndex;
-    return `<div class="dayc ${done ? 'done' : ''} ${today ? 'today' : ''} ${i === 6 ? 'wide' : ''}">${t('day')} ${i + 1}<div class="di">${rewardIcon(r)}</div>${rewardText(r)}</div>`;
+    return `<div class="dayc ${done ? 'done' : ''} ${today ? 'today' : ''} ${i === 6 ? 'wide' : ''}">${dayLabel(i + 1)}<div class="di">${rewardIcon(r)}</div>${rewardText(r)}</div>`;
   }).join('');
   openModal(`
     <button class="closex">✕</button>
@@ -686,7 +837,7 @@ function openDaily() {
       st.available
         ? `<button class="btn yellow" id="dX2">▶ ${t('claimX2')}</button><button class="btn" id="dClaim">${t('claim')}</button>`
         : `<p style="margin-top:12px">${t('comeTomorrow')}</p>`
-    }`);
+    }`, { tone: 'sun' });
   const claim = (mult) => {
     const r = M.claimDaily(state, mult);
     if (!r) return;
@@ -752,7 +903,7 @@ function openWheel() {
     <h2>${t('wheelTitle')}</h2>
     <div class="wheelwrap"><canvas id="wheelCv" width="540" height="540"></canvas><div class="hubdot"></div><div class="pointer"></div></div>
     ${st.free ? `<button class="btn" id="wFree">${t('spinFree')}</button>` : st.adLeft > 0 ? `<button class="btn yellow" id="wAd">▶ ${t('spinAd')}</button><div class="note">${t('spinsLeft')}: ${st.adLeft}</div>` : `<p>${t('noSpins')}</p>`}
-  `);
+  `, { tone: 'grape' });
   const cv = $('#wheelCv');
   drawWheel(cv);
   cv.style.transition = 'none';
@@ -785,7 +936,7 @@ function openWheel() {
         <div class="big-ico">${prize.coins ? '💰' : { crane: '🏗️', sort: '🔀', slot: '🅿️' }[prize.booster]}</div>
         <h2>${t('youWon')}</h2>
         <div class="reward">${prize.coins ? `<span class="coin"></span>${fmt(prize.coins)}` : `${t('boosterTitle')[prize.booster]} ×1`}</div>
-        <button class="btn" id="wOk">${t('claim')}</button>`);
+        <button class="btn" id="wOk">${t('claim')}</button>`, { tone: 'sun' });
       $('#wOk').onclick = () => {
         closeModal();
         if (prize.coins) flyCoins(prize.coins);
@@ -855,7 +1006,7 @@ function openChest(kind) {
       <div class="ribbon">${kind === 'star' ? t('starChest') : t('chapterChest')}</div>
       <div class="big-ico chest">🎁</div>
       <div class="chestOpen hidden" id="chestRw"><div><span class="reward"><span class="coin"></span>+${r.coins}</span></div><div>${items}</div></div>
-      <button class="btn" id="cOpen">${t('openChest')}</button>`);
+      <button class="btn" id="cOpen">${t('openChest')}</button>`, { tone: 'sun' });
     $('#cOpen').onclick = () => {
       const ico = $('#modalCard .chest');
       ico.classList.add('shake');
@@ -896,7 +1047,7 @@ function openOffer() {
     <h2>${t('iap').starter}</h2>
     <p>${t('iapDesc').starter}</p>
     <div class="offerTimer">⏰ ${offerLeft()}</div>
-    <button class="btn blue" id="oBuy">${price}</button>`);
+    <button class="btn blue" id="oBuy">${price}</button>`, { tone: 'rose' });
   $('#oBuy').onclick = () => {
     closeModal();
     purchase('starter');
@@ -1051,7 +1202,7 @@ function startLevel(n, opts = {}) {
       <div class="big-ico">${MECH_ICON[k]}</div>
       <h2>${t('mech')[k]}</h2>
       <p>${t('mechDesc')[k]}</p>
-      <button class="btn" id="mOk">${t('gotIt')}</button>`);
+      <button class="btn" id="mOk">${t('gotIt')}</button>`, { tone: 'mint' });
     $('#mOk').onclick = () => {
       closeModal();
       ruleSplash(n, theme);
@@ -1061,7 +1212,7 @@ function startLevel(n, opts = {}) {
 
 function ruleSplash(n, theme) {
   if (levelData.difficulty !== 'normal') splash(`${t(levelData.difficulty)}<small>${t('level')} ${n}</small>`, levelData.difficulty === 'superhard' ? 'super' : '');
-  else if ((n - 1) % CHAPTER_SIZE === 0 && n > 1) splash(`${theme.name[getLang()]}<small>${t('chapter')} ${chapterOf(n) + 1}</small>`, 'info');
+  else if ((n - 1) % CHAPTER_SIZE === 0 && n > 1) splash(`${t('themes')[theme.id]}<small>${t('chapter')} ${chapterOf(n) + 1}</small>`, 'info');
   else if (levelData.moves) splash(`🕹️ ${levelData.moves}<small>${t('mech').moves}</small>`, 'info');
   else if (levelData.time) splash(`⏱️ ${fmtTime(levelData.time)}<small>${t('mech').time}</small>`, 'info');
 }
@@ -1184,7 +1335,7 @@ function onWin() {
     <div class="winextra">${!replay ? `<span>🔥 ${t('streak')} ${state.winStreak}</span>` : ''}${newStars ? `<span>⭐ +${newStars} ${t('starChest')}</span>` : ''}${!replay && state.level >= 4 ? `<span>🐷 +${M.PIGGY.perWin}</span>` : ''}${M.weekendEvent() ? '<span>🎉 x2</span>' : ''}</div>
     <button class="btn yellow" id="bDouble">▶ ${t('double')}</button>
     <div class="btnrow"><button class="btn blue" id="bHome">🏠</button><button class="btn" id="bNext" style="flex:3">${t('next')}</button></div>
-  `);
+  `, { tone: 'sun' });
   let claimed = false;
   const claim = (mult) => {
     if (claimed) return;
@@ -1238,7 +1389,7 @@ function showLevelUp(ups) {
       <div class="plevel" style="margin:10px auto;width:70px;height:70px;font-size:32px">${last.plevel}</div>
       <div><span class="reward"><span class="coin"></span>+${coins}</span></div>
       <p>+1 ${t('boosterTitle')[last.booster]}</p>
-      <button class="btn" id="luOk">${t('claim')}</button>`);
+      <button class="btn" id="luOk">${t('claim')}</button>`, { tone: 'grape' });
     $('#luOk').onclick = () => {
       closeModal();
       flyCoins(coins);
@@ -1274,7 +1425,7 @@ function onLose() {
     <button class="btn yellow" id="bAd">▶ ${t(info.cont)}</button>
     <button class="btn blue" id="bCoins" ${canAfford ? '' : 'disabled'}>${t(info.contCoins)} · <span class="coin"></span>${ECONOMY.continueCost}</button>
     <div class="btnrow"><button class="btn ghost" id="bHome">🏠 ${t('home')}</button><button class="btn ghost" id="bRetry">↻ ${t('retry')}</button></div>
-  `);
+  `, { tone: 'rose' });
   $('#bAd').onclick = async () => {
     $('#bAd').disabled = true;
     if (await rewarded()) doContinue(reason);
@@ -1371,7 +1522,7 @@ function boosterClick(k) {
     <p>${t('boosterDesc')[k]}</p>
     <button class="btn yellow" id="bAd">▶ ${t('freeWithAd')}</button>
     <button class="btn blue" id="bBuy" ${state.coins >= price ? '' : 'disabled'}>${t('buy')} · <span class="coin"></span>${price}</button>
-  `);
+  `, { tone: 'sky' });
   $('#bAd').onclick = async () => {
     $('#bAd').disabled = true;
     if (await rewarded()) {
@@ -1396,26 +1547,24 @@ function boosterClick(k) {
 function openPause() {
   if (!game || ended) return;
   sfx.click();
-  const tg = (k) => `<button class="toggle ${state.settings[k] ? 'on' : ''}" data-k="${k}"></button>`;
-  openModal(`
-    <h2>${t('paused')}</h2>
-    <div style="margin-top:8px">
-      <div class="row">${t('sound')} ${tg('sfx')}</div>
-      <div class="row">${t('music')} ${tg('music')}</div>
-      <div class="row">${t('vibration')} ${tg('haptic')}</div>
+  openModal(
+    `
+    <div class="mhead"><span class="mico float">☕</span><h2>${t('paused')}</h2><p>${t('pauseSub')}</p></div>
+    <div class="levelchip">${playingDaily ? '🧩 ' + t('dcShort') : `${t('level')} ${playing}`}${levelData.difficulty !== 'normal' ? ` · <b>${t(levelData.difficulty)}</b>` : ''}</div>
+    <button class="btn big-resume" id="pRes">▶ ${t('resume')}</button>
+    <div class="iconrow">
+      <button class="iconbtn orange" id="pRe"><span>↻</span><small>${t('restart')}</small></button>
+      <button class="iconbtn blue" id="pHome"><span>🏠</span><small>${t('home')}</small></button>
+      <button class="iconbtn purple" id="pSet"><span>⚙️</span><small>${t('settings')}</small></button>
     </div>
-    <button class="btn" id="pRes">▶ ${t('resume')}</button>
-    <div class="btnrow"><button class="btn blue" id="pRe">↻ ${t('restart')}</button><button class="btn blue" id="pHome">🏠 ${t('home')}</button></div>`);
-  $$('.toggle', $('#modalCard')).forEach((b) => {
-    b.onclick = () => {
-      const k = b.dataset.k;
-      state.settings[k] = !state.settings[k];
-      b.classList.toggle('on', state.settings[k]);
-      applySettings();
-      persist();
-    };
-  });
-  $('#pRes').onclick = closeModal;
+    <div class="chips small">${chip('sfx', '🔊', t('sound'))}${chip('music', '🎵', t('music'))}${chip('haptic', '📳', t('vibration'))}</div>`,
+    { tone: 'grape' }
+  );
+  bindChips();
+  $('#pRes').onclick = () => {
+    sfx.click();
+    closeModal();
+  };
   $('#pRe').onclick = () => {
     if (!playingDaily) resetStreak();
     startLevel(playing, { daily: playingDaily });
@@ -1424,6 +1573,7 @@ function openPause() {
     if (!playingDaily) resetStreak();
     showMenu('home');
   };
+  $('#pSet').onclick = openSettings;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1453,6 +1603,7 @@ async function boot() {
   M.ensureMissions(state);
   audioState.sfx = state.settings.sfx;
   audioState.music = state.settings.music;
+  await setLang(state.settings.lang || detectLang());
   applySettings();
 
   $('#btnSettings').onclick = () => {
@@ -1537,7 +1688,7 @@ async function boot() {
     return false;
   });
   onPause(() => suspendAudio());
-  initNotifications();
+  initNotifications(t('notifChannel'));
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       suspendAudio();

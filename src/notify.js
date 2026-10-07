@@ -5,12 +5,12 @@ import { isNative } from './platform.js';
 
 let allowed = false;
 
-export async function initNotifications() {
+export async function initNotifications(channelName = 'Reminders') {
   if (!isNative) return;
   try {
     const p = await LocalNotifications.checkPermissions();
     allowed = p.display === 'granted';
-    await LocalNotifications.createChannel?.({ id: 'reminders', name: 'Hatırlatmalar', importance: 3 });
+    await LocalNotifications.createChannel?.({ id: 'reminders', name: channelName, importance: 3 });
   } catch {
     allowed = false;
   }
