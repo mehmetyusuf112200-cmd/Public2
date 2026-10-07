@@ -35,6 +35,21 @@ Secrets yoksa AAB yine üretilir ama imzasız olur (sürüm notunda ⚠️ yazar
 ## 💰 Reklamlar (AdMob)
 Şu an Google'ın **test** reklamları açık. Gerçek reklamlar için ID'ler `src/config.js` ve `android/app/src/main/res/values/strings.xml` içine yazılıp `testing: false` yapılır.
 
+## 🛒 Uygulama içi satın almalar (Play Console → Para kazanma → Uygulama içi ürünler)
+Bu ID'lerle ürün oluşturulur (fiyatı sen belirlersin, oyun fiyatı Play'den otomatik çeker):
+
+| Ürün ID | Ne verir | Tür |
+|---|---|---|
+| `remove_ads` | Reklamsız | tek seferlik |
+| `starter_pack` | Reklamsız + 3.000 altın + her güçlendiriciden 5 | tek seferlik |
+| `coins_small` | 2.000 altın | tüketilebilir |
+| `coins_medium` | 6.500 altın | tüketilebilir |
+| `coins_large` | 16.000 altın | tüketilebilir |
+| `booster_bundle` | Her güçlendiriciden 5 | tüketilebilir |
+
+## 🏆 Liderlik tablosu (Google Play Games)
+Play Console → Play Games Services → kurulum: proje kimliği `strings.xml` → `game_services_project_id`, "En Yüksek Bölüm" liderlik tablosunun ID'si `src/config.js` → `GAMES.leaderboardId`. (Manifest'teki yorum satırı da açılır.)
+
 ## 🛠️ Kod yapısı
 - `src/core/logic.js` – oyun kuralları + çözülebilirliği garantili bölüm üretici (sonsuz bölüm)
 - `src/render.js` – Three.js 3D görünüm ve animasyonlar
