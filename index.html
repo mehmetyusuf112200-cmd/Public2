@@ -9,17 +9,19 @@
   <body>
     <canvas id="scene"></canvas>
 
-    <div id="hud">
+    <!-- in-game HUD -->
+    <div id="hud" class="hidden">
       <div class="topbar">
-        <button id="btnSettings" class="round" aria-label="settings">
-          <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm7.43-2.53a7.8 7.8 0 0 0 0-1.94l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.68-.98l-.38-2.65A.5.5 0 0 0 14 2h-4a.5.5 0 0 0-.5.42l-.38 2.65c-.6.25-1.17.58-1.68.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64l2.11 1.65a7.8 7.8 0 0 0 0 1.94l-2.11 1.65a.5.5 0 0 0-.12.64l2 3.46c.13.22.39.3.61.22l2.49-1c.51.4 1.08.73 1.68.98l.38 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.38-2.65c.6-.25 1.17-.58 1.68-.98l2.49 1c.22.08.48 0 .61-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.65Z"/></svg>
+        <button id="btnPause" class="round" aria-label="pause">
+          <svg viewBox="0 0 24 24" width="22" height="22"><rect x="6" y="5" width="4" height="14" rx="1.5" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1.5" fill="currentColor"/></svg>
         </button>
         <div class="levelpill">
           <span id="levelText">Bölüm 1</span>
           <span id="diffBadge" class="badge hidden"></span>
         </div>
-        <div class="coins"><span class="coin"></span><span id="coinText">0</span></div>
+        <div class="coins" data-coins><span class="coin"></span><span class="coinText">0</span></div>
       </div>
+      <div id="progress" class="progress"><div id="progressFill"></div></div>
       <div id="tip" class="tip hidden"></div>
       <div class="boosters">
         <button class="booster" data-b="crane"><span class="ico">🏗️</span><span class="lbl" data-t="crane"></span><span class="cnt"></span></button>
@@ -28,18 +30,33 @@
       </div>
     </div>
 
+    <!-- main menu -->
+    <div id="menu" class="menu">
+      <div class="sky"><span class="cloud c1"></span><span class="cloud c2"></span><span class="cloud c3"></span></div>
+      <div class="menu-top">
+        <div class="player" id="playerBadge">
+          <div class="plevel" id="plevel">1</div>
+          <div class="xpwrap"><div class="xplabel" id="xpLabel"></div><div class="xpbar"><div id="xpFill"></div></div></div>
+        </div>
+        <div class="coins" data-coins id="menuCoins"><span class="coin"></span><span class="coinText">0</span><span class="plus">+</span></div>
+        <button id="btnSettings" class="round" aria-label="settings">
+          <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm7.43-2.53a7.8 7.8 0 0 0 0-1.94l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.68-.98l-.38-2.65A.5.5 0 0 0 14 2h-4a.5.5 0 0 0-.5.42l-.38 2.65c-.6.25-1.17.58-1.68.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64l2.11 1.65a7.8 7.8 0 0 0 0 1.94l-2.11 1.65a.5.5 0 0 0-.12.64l2 3.46c.13.22.39.3.61.22l2.49-1c.51.4 1.08.73 1.68.98l.38 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.38-2.65c.6-.25 1.17-.58 1.68-.98l2.49 1c.22.08.48 0 .61-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.65Z"/></svg>
+        </button>
+      </div>
+      <div class="menu-body" id="menuBody"></div>
+      <nav class="tabs" id="tabs">
+        <button data-tab="shop"><span class="ti">🏪</span><span class="tl" data-t="tabShop"></span><i class="dot hidden"></i></button>
+        <button data-tab="map"><span class="ti">🗺️</span><span class="tl" data-t="tabMap"></span><i class="dot hidden"></i></button>
+        <button data-tab="home" class="center"><span class="ti">🚌</span><span class="tl" data-t="tabHome"></span><i class="dot hidden"></i></button>
+        <button data-tab="missions"><span class="ti">📋</span><span class="tl" data-t="tabMissions"></span><i class="dot hidden"></i></button>
+        <button data-tab="rank"><span class="ti">🏆</span><span class="tl" data-t="tabRank"></span><i class="dot hidden"></i></button>
+      </nav>
+    </div>
+
+    <div id="fx" class="fx"></div>
     <div id="toast" class="toast"></div>
     <div id="splash" class="splash hidden"></div>
     <div id="modal" class="modal hidden"><div class="card" id="modalCard"></div></div>
-
-    <div id="home" class="home">
-      <div class="logo">
-        <div class="logo-bus">🚌</div>
-        <h1>Commute<br /><span>Craze</span></h1>
-      </div>
-      <button id="btnPlay" class="big"></button>
-      <div class="home-level" id="homeLevel"></div>
-    </div>
 
     <script type="module" src="/src/main.js"></script>
   </body>

@@ -16,11 +16,22 @@ export const ADS = {
   interstitialCooldownSec: 120,
 };
 
+// ---------------------------------------------------------------------------
+// Google Play Games leaderboard.
+//   Play Console > Play Games Services > Setup: copy the numeric Project ID into
+//   android/app/src/main/res/values/strings.xml (game_services_project_id),
+//   create a leaderboard "En Yüksek Bölüm" and paste its ID (CgkI...) below.
+// ---------------------------------------------------------------------------
+export const GAMES = {
+  leaderboardId: '',
+};
+
 export const ECONOMY = {
   startCoins: 300,
   winCoins: 25,
   hardBonus: 15,
   superhardBonus: 35,
+  replayCoins: 5,
   prices: { crane: 150, sort: 100, slot: 200 },
   startBoosters: { crane: 2, sort: 2, slot: 1 },
   continueCost: 250,

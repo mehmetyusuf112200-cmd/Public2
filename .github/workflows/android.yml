@@ -31,6 +31,8 @@ jobs:
           npm test
 
       - name: Build web & sync
+        env:
+          VERSION_NAME: 1.0.${{ github.run_number }}
         run: |
           npm run build
           npx cap sync android

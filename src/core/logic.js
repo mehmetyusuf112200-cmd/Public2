@@ -17,6 +17,13 @@ export const KINDS = {
   bus: { len: 4, cap: 10 },
 };
 
+// cosmetic body styles per vehicle kind
+export const VARIANTS = {
+  car: ['sedan', 'sedan', 'taxi', 'sport', 'pickup', 'police', 'beetle'],
+  van: ['van', 'minibus', 'icecream', 'delivery'],
+  bus: ['city', 'double', 'school'],
+};
+
 export function vehicleCells(v) {
   const d = DIRS[v.dir];
   const cells = [];
@@ -362,6 +369,11 @@ export function generateLevel(levelNum) {
       const j = Math.floor(rand() * (i + 1));
       [base[i].color, base[j].color] = [base[j].color, base[i].color];
     }
+    // visual variant (purely cosmetic)
+    base.forEach((v) => {
+      const list = VARIANTS[v.kind];
+      v.variant = list[Math.floor(rand() * list.length)];
+    });
 
     // reference exit order: random pick from currently removable each step
     const order = [];
