@@ -1403,3 +1403,133 @@ button {
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15);
   line-height: 1.3;
 }
+
+/* ---------- retention ---------- */
+.big {
+  position: relative;
+}
+.flame {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  background: linear-gradient(#ffb547, #ff5a1f);
+  color: #fff;
+  font-size: 18px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 3px solid #fff;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.2);
+}
+.streakInfo,
+.eventBanner {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 999px;
+  padding: 2px 14px;
+  font-weight: 800;
+  font-size: 14px;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.15);
+}
+.eventBanner {
+  background: linear-gradient(90deg, #ff6fbf, #ffb547);
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+  animation: pulse 1.6s infinite;
+}
+.chestbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: min(260px, 70vw);
+}
+.chestbar .cb-ico {
+  font-size: 30px;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.3));
+}
+.chestbar.ready .cb-ico {
+  animation: wiggle 0.8s infinite;
+}
+.chestbar .cb-bar {
+  position: relative;
+  flex: 1;
+  height: 22px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 3px solid #fff;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.chestbar .cb-bar span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, #ffe066, #ffb300);
+}
+.chestbar .cb-bar b {
+  position: relative;
+  color: #fff;
+  font-size: 13px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  line-height: 16px;
+}
+@keyframes wiggle {
+  25% {
+    transform: rotate(-12deg) scale(1.1);
+  }
+  75% {
+    transform: rotate(12deg) scale(1.1);
+  }
+}
+.chest.shake {
+  animation: wiggle 0.2s infinite;
+}
+.chestOpen {
+  animation: cardin 0.4s;
+}
+.winextra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin: 2px 0 4px;
+}
+.winextra span {
+  background: #fff;
+  border-radius: 999px;
+  padding: 1px 10px;
+  font-weight: 800;
+  font-size: 14px;
+  box-shadow: inset 0 -2px 0 #e8dcc0;
+}
+.nearmiss {
+  margin: 8px 0 6px;
+}
+.nearmiss b {
+  font-size: 18px;
+  color: var(--red);
+}
+.nearmiss .mbar {
+  height: 14px;
+  margin-top: 4px;
+}
+.streakWarn {
+  background: #fff1e0;
+  color: #c25e00;
+  font-weight: 800;
+  border-radius: 14px;
+  padding: 6px 10px;
+  margin: 6px 0 4px;
+  font-size: 15px;
+}
+.offerTimer {
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--red);
+  margin: 4px 0;
+}
+.side.offer {
+  background: linear-gradient(#fff7d6, #ffd36b);
+}
+.booster .cnt.free {
+  background: linear-gradient(#ffb547, #ff5a1f);
+}
+.panel.piggy {
+  background: linear-gradient(#fff0f6, #ffe0ec);
+}

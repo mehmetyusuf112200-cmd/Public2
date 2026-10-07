@@ -11,6 +11,7 @@ import { THEMES, STYLES, themeForLevel, chapterOf, CHAPTER_SIZE } from './theme.
 import * as M from './meta.js';
 import { PRODUCTS, initIAP, buy, priceOf, storeReady, ownedNonConsumables } from './iap.js';
 import { initGames, gamesAvailable, submitLevel, openLeaderboard } from './games.js';
+import { initNotifications, askNotificationPermission, scheduleReminders, clearReminders } from './notify.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -29,6 +30,8 @@ let timeLeft = null;
 let timerStarted = false;
 let lastAlarm = 0;
 let previewLevel = 0;
+let playingDaily = false;
+let tempBoosters = { crane: 0, sort: 0, slot: 0 };
 
 const R = new Renderer($('#scene'));
 R.onPick = onPick;
@@ -310,6 +313,11 @@ function renderHome(body) {
     strip.push(`<span class="snode ${cls}">${label}</span>`);
     if (n < state.level + 2) strip.push(`<span class="slink ${n < state.level ? 'done' : ''}"></span>`);
   }
+  const streak = state.winStreak || 0;
+  const tier = M.streakTier(state);
+  const dc = M.dcStatus(state);
+  const chestPct = Math.min(100, ((state.chestStars || 0) / M.CHEST_STARS) * 100);
+  const offer = M.offerActive(state);
   const mech = mechList(lp)
     .map((k) => `<span class="mchip">${MECH_ICON[k]} ${t('mech')[k]}</span>`)
     .join('');
@@ -319,16 +327,23 @@ function renderHome(body) {
       <div class="sidecol left">
         <button class="side ${daily ? 'glow' : ''}" id="sDaily"><span class="si">📅</span>${t('daily')}${daily ? '<i class="dot"></i>' : ''}</button>
         <button class="side ${wheel ? 'glow' : ''}" id="sWheel"><span class="si">🎡</span>${t('wheel')}${wheel ? '<i class="dot"></i>' : ''}</button>
+        ${state.level >= 5 ? `<button class="side ${dc.done ? '' : 'glow'}" id="sDC"><span class="si">🧩</span>${t('dcShort')}${dc.done ? '' : '<i class="dot"></i>'}</button>` : ''}
       </div>
       <div class="sidecol right">
         ${state.noAds ? '' : `<button class="side" id="sNoAds"><span class="si">🚫</span>${t('noAds')}</button>`}
         <button class="side" id="sFree"><span class="si">🎬</span>${t('freeCoins')}</button>
+        ${state.level >= 4 ? `<button class="side ${state.piggy >= M.PIGGY.minBreak ? 'glow' : ''}" id="sPiggy"><span class="si">🐷</span>${fmt(state.piggy)}</button>` : ''}
+        ${offer ? `<button class="side offer glow" id="sOffer"><span class="si">🎁</span>${offerLeft()}</button>` : ''}
       </div>
       <div class="homeBottom">
+        ${M.weekendEvent() ? `<div class="eventBanner">🎉 ${t('weekendEvent')}</div>` : ''}
+        <button class="chestbar ${M.chestReady(state) ? 'ready' : ''}" id="sChest"><span class="cb-ico">${M.chestReady(state) ? '🎁' : '⭐'}</span>
+          <span class="cb-bar"><span style="width:${chestPct}%"></span><b>${M.chestReady(state) ? t('openChest') : `${state.chestStars || 0}/${M.CHEST_STARS}`}</b></span></button>
         <div class="chapterTag">${t('chapter')} ${chapterOf(state.level) + 1} · ${theme.name[getLang()]}</div>
         <div class="strip">${strip.join('')}</div>
         ${mech ? `<div class="mchips">${mech}</div>` : ''}
-        <button class="big ${lp.difficulty}" id="btnPlay"><small>${t('level')} ${state.level}${lp.difficulty !== 'normal' ? ' · ' + t(lp.difficulty) : ''}</small>${t('play')}</button>
+        <button class="big ${lp.difficulty}" id="btnPlay"><small>${t('level')} ${state.level}${lp.difficulty !== 'normal' ? ' · ' + t(lp.difficulty) : ''}</small>${t('play')}${streak ? `<span class="flame">🔥${streak}</span>` : ''}</button>
+        ${tier ? `<div class="streakInfo">🔥 ${t('streakBonus')}: ${['', '🔀', '🔀🏗️', '🔀🏗️🅿️'][tier]}</div>` : ''}
       </div>
     </div>`;
   $('#btnPlay').onclick = () => {
@@ -340,6 +355,35 @@ function renderHome(body) {
   const na = $('#sNoAds');
   if (na) na.onclick = () => purchase('noads');
   $('#sFree').onclick = freeCoinsAd;
+  const sdc = $('#sDC');
+  if (sdc) sdc.onclick = openDailyPuzzle;
+  const sp = $('#sPiggy');
+  if (sp)
+    sp.onclick = () => {
+      tab = 'shop';
+      renderTab();
+    };
+  const so = $('#sOffer');
+  if (so) so.onclick = openOffer;
+  $('#sChest').onclick = () => {
+    if (M.chestReady(state)) openChest('star');
+    else toast(t('chestHint'));
+  };
+}
+
+function openDailyPuzzle() {
+  sfx.click();
+  const dc = M.dcStatus(state);
+  openModal(`
+    <button class="closex">✕</button>
+    <div class="ribbon">${t('dcTitle')}</div>
+    <div class="big-ico">🧩</div>
+    <p>${t('dcDesc')}</p>
+    <div><span class="reward"><span class="coin"></span>${dc.reward}</span></div>
+    ${dc.streak ? `<p>🔥 ${t('dcStreak').replace('{n}', dc.streak)}</p>` : ''}
+    ${dc.done ? `<p><b>✔ ${t('dcDone')}</b></p>` : `<button class="btn purple" id="dcPlay">${t('play')}</button>`}`);
+  const b = $('#dcPlay');
+  if (b) b.onclick = () => startLevel(M.dcLevelNum(), { daily: true });
 }
 
 const levelCache = new Map();
@@ -413,7 +457,7 @@ function stylePreview(id) {
 
 function renderShop(body) {
   const fcLeft = M.freeCoinsLeft(state);
-  const iapItems = PRODUCTS.filter((p) => !(p.key === 'noads' && state.noAds) && !(p.key === 'starter' && state.purchases.starter))
+  const iapItems = PRODUCTS.filter((p) => !p.hidden && !(p.key === 'noads' && state.noAds) && !(p.key === 'starter' && state.purchases.starter))
     .map((p) => {
       const price = priceOf(p.key) || p.fallback;
       return `<div class="item ${p.badge ? 'special' : ''}">${p.badge ? `<span class="tag">${t(p.badge)}</span>` : ''}
@@ -442,6 +486,7 @@ function renderShop(body) {
   const cb = state.coinBonus || 0;
   const cbPrice = M.COIN_BONUS_PRICES[cb];
   body.innerHTML = `
+    ${piggyPanel()}
     <div class="panel"><h3>${t('shopReal')}</h3>${iapItems}
       ${storeReady() ? '' : `<div class="note">${t('storeUnavailable')}</div>`}</div>
     <div class="panel"><h3>${t('shopFree')} <small>${fcLeft} ${t('leftToday')}</small></h3>
@@ -454,6 +499,8 @@ function renderShop(body) {
       <div class="mbar"><div style="width:${cb * 20}%"></div></div></div>
       ${cb >= 5 ? `<button class="btn small" disabled>${t('max')}</button>` : `<button class="btn small" id="bCB" ${state.coins >= cbPrice ? '' : 'disabled'}><span class="coin"></span>${fmt(cbPrice)}</button>`}</div></div>`;
   $$('[data-iap]', body).forEach((b) => (b.onclick = () => purchase(b.dataset.iap)));
+  const pb = $('#bPiggy');
+  if (pb) pb.onclick = breakPiggy;
   $$('[data-bb]', body).forEach(
     (b) =>
       (b.onclick = () => {
@@ -777,11 +824,103 @@ async function freeCoinsAd() {
 }
 
 /* ---------------- purchases ---------------- */
+function piggyPanel() {
+  if (state.level < 4) return '';
+  const pct = Math.min(100, (state.piggy / M.PIGGY.cap) * 100);
+  const can = state.piggy >= M.PIGGY.minBreak;
+  const price = priceOf('piggy') || PRODUCTS.find((p) => p.key === 'piggy').fallback;
+  return `<div class="panel piggy"><h3>🐷 ${t('piggyTitle')} <small>${fmt(state.piggy)} / ${fmt(M.PIGGY.cap)}</small></h3>
+    <div class="item special"><span class="ii">🐷</span><div class="it"><b>${fmt(state.piggy)} <span class="coin" style="width:16px;height:16px;vertical-align:-2px"></span></b>
+    <span>${can ? t('piggyDesc') : t('piggyFill').replace('{n}', fmt(M.PIGGY.minBreak))}</span><div class="mbar"><div style="width:${pct}%"></div></div></div>
+    <button class="btn small blue" id="bPiggy" ${can ? '' : 'disabled'}>${price}</button></div></div>`;
+}
+function breakPiggy() {
+  if (state.piggy < M.PIGGY.minBreak) return toast(t('piggyFill').replace('{n}', fmt(M.PIGGY.minBreak)));
+  purchase('piggy');
+}
+
+function openChest(kind) {
+  const big = kind !== 'star';
+  const r = M.rollChest(big);
+  if (kind === 'star') state.chestStars -= M.CHEST_STARS;
+  M.grantChest(state, r);
+  state.coins -= r.coins; // added back by the fly animation
+  persist();
+  sfx.booster();
+  const items = Object.entries(r.boosters)
+    .map(([k, n]) => `<span class="reward" style="font-size:20px">${{ crane: '🏗️', sort: '🔀', slot: '🅿️' }[k]} ×${n}</span>`)
+    .join('');
+  return new Promise((resolve) => {
+    openModal(`
+      <div class="ribbon">${kind === 'star' ? t('starChest') : t('chapterChest')}</div>
+      <div class="big-ico chest">🎁</div>
+      <div class="chestOpen hidden" id="chestRw"><div><span class="reward"><span class="coin"></span>+${r.coins}</span></div><div>${items}</div></div>
+      <button class="btn" id="cOpen">${t('openChest')}</button>`);
+    $('#cOpen').onclick = () => {
+      const ico = $('#modalCard .chest');
+      ico.classList.add('shake');
+      $('#cOpen').disabled = true;
+      setTimeout(() => {
+        ico.textContent = '✨';
+        sfx.win();
+        $('#chestRw').classList.remove('hidden');
+        $('#cOpen').textContent = t('claim');
+        $('#cOpen').disabled = false;
+        $('#cOpen').onclick = () => {
+          closeModal();
+          flyCoins(r.coins);
+          if (!inGame) {
+            renderMenuTop();
+            renderTab();
+          }
+          setTimeout(resolve, 400);
+        };
+      }, 800);
+    };
+  });
+}
+
+function offerLeft() {
+  const ms = Math.max(0, state.offerUntil - Date.now());
+  const h = Math.floor(ms / 3600000),
+    m = Math.floor((ms % 3600000) / 60000);
+  return `${h}:${String(m).padStart(2, '0')}`;
+}
+function openOffer() {
+  if (!M.offerActive(state)) return;
+  const price = priceOf('starter') || PRODUCTS.find((p) => p.key === 'starter').fallback;
+  openModal(`
+    <button class="closex">✕</button>
+    <div class="ribbon">${t('limitedOffer')}</div>
+    <div class="big-ico">🎁</div>
+    <h2>${t('iap').starter}</h2>
+    <p>${t('iapDesc').starter}</p>
+    <div class="offerTimer">⏰ ${offerLeft()}</div>
+    <button class="btn blue" id="oBuy">${price}</button>`);
+  $('#oBuy').onclick = () => {
+    closeModal();
+    purchase('starter');
+  };
+}
+
+function resetStreak() {
+  if (state.winStreak) {
+    state.winStreak = 0;
+    persist();
+  }
+}
+
 function grantProduct(key) {
   const p = PRODUCTS.find((x) => x.key === key);
   if (!p) return;
   const g = p.grant;
   if (g.noAds) state.noAds = true;
+  if (g.piggy) {
+    const amount = state.piggy;
+    state.piggy = 0;
+    persist();
+    flyCoins(amount);
+  }
   if (g.boosters) for (const k of ['crane', 'sort', 'slot']) state.boosters[k] = (state.boosters[k] || 0) + g.boosters;
   if (!p.consumable) state.purchases[key] = true;
   persist();
@@ -822,7 +961,7 @@ async function restorePurchases() {
 /* GAME                                                                */
 /* ------------------------------------------------------------------ */
 function updateHud() {
-  $('#levelText').textContent = `${t('level')} ${playing}`;
+  $('#levelText').textContent = playingDaily ? `🧩 ${t('dcShort')}` : `${t('level')} ${playing}`;
   refreshCoins();
   const b = $('#diffBadge');
   if (levelData && levelData.difficulty !== 'normal') {
@@ -832,8 +971,9 @@ function updateHud() {
   } else b.classList.add('hidden');
   $$('.booster').forEach((el) => {
     const k = el.dataset.b;
-    const n = state.boosters[k] || 0;
+    const n = (state.boosters[k] || 0) + (tempBoosters[k] || 0);
     const c = el.querySelector('.cnt');
+    c.classList.toggle('free', (tempBoosters[k] || 0) > 0);
     c.textContent = n > 0 ? n : '+';
     c.classList.toggle('plus', n === 0);
     el.classList.toggle('active', k === 'crane' && craneMode);
@@ -861,11 +1001,16 @@ function updateProgress() {
   $('#progressFill').style.width = ((total - left) / total) * 100 + '%';
 }
 
-function startLevel(n) {
+function startLevel(n, opts = {}) {
   closeModal();
   playing = n;
-  levelData = generateLevel(n);
+  playingDaily = !!opts.daily;
+  levelData = playingDaily ? generateLevel(n) : generateLevel(n);
   game = new Game(levelData);
+  // win-streak bonus (main levels only)
+  const tier = playingDaily ? 0 : M.streakTier(state);
+  tempBoosters = { sort: tier >= 1 ? 1 : 0, crane: tier >= 2 ? 1 : 0, slot: 0 };
+  if (tier >= 3) game.addSlot();
   game.settle();
   const theme = themeForLevel(n);
   R.setStyle(state.style);
@@ -888,6 +1033,7 @@ function startLevel(n) {
   }
   $('#hud').classList.remove('hidden');
   updateHud();
+  if (tier) setTimeout(() => toast(`🔥 ${t('streakBonus')}!`), 1900);
   if (n === 1) tip(t('tutorial1'));
   else if (n === 2) tip(t('tutorial2'));
   else if (n === 3) tip(t('tutorial3'));
@@ -999,11 +1145,22 @@ function onWin() {
   haptics.heavy();
   R.confetti();
   tip(null);
-  const replay = playing < state.level;
+  const replay = playingDaily || playing < state.level;
   const stars = Math.max(1, 3 - usedBoosters - usedContinue);
-  const prevStars = state.stars[playing] || 0;
-  state.stars[playing] = Math.max(prevStars, stars);
-  const coins = levelReward();
+  const prevStars = playingDaily ? 3 : state.stars[playing] || 0;
+  if (!playingDaily) state.stars[playing] = Math.max(prevStars, stars);
+  const newStars = Math.max(0, stars - prevStars);
+  state.chestStars = (state.chestStars || 0) + newStars;
+  let coins = levelReward();
+  if (playingDaily) coins = M.dcComplete(state);
+  if (M.weekendEvent()) coins *= 2;
+  if (!replay) {
+    state.winStreak = (state.winStreak || 0) + 1;
+    state.bestStreak = Math.max(state.bestStreak || 0, state.winStreak);
+    M.feedPiggy(state);
+  }
+  const chapterGift = !replay && playing % CHAPTER_SIZE === 0 && !state.chapterGifts[playing];
+  if (chapterGift) state.chapterGifts[playing] = true;
   const xp = replay ? 5 : M.xpForWin(levelData.difficulty, stars);
   const done = [];
   done.push(...M.track(state, 'wins', 1));
@@ -1024,6 +1181,7 @@ function onWin() {
     <div class="stars">${starHtml}</div>
     <p>${t('winSub')}</p>
     <div><span class="reward"><span class="coin"></span>+<span id="rw">${coins}</span></span><span class="reward xp">+${xp} ${t('xp')}</span></div>
+    <div class="winextra">${!replay ? `<span>🔥 ${t('streak')} ${state.winStreak}</span>` : ''}${newStars ? `<span>⭐ +${newStars} ${t('starChest')}</span>` : ''}${!replay && state.level >= 4 ? `<span>🐷 +${M.PIGGY.perWin}</span>` : ''}${M.weekendEvent() ? '<span>🎉 x2</span>' : ''}</div>
     <button class="btn yellow" id="bDouble">▶ ${t('double')}</button>
     <div class="btnrow"><button class="btn blue" id="bHome">🏠</button><button class="btn" id="bNext" style="flex:3">${t('next')}</button></div>
   `);
@@ -1049,7 +1207,19 @@ function onWin() {
     await new Promise((r) => setTimeout(r, 700));
     if (!replay) await maybeInterstitial(won, state.noAds);
     if (ups.length) await showLevelUp(ups);
-    if (toMenu || replay) showMenu(replay ? 'map' : 'home');
+    if (chapterGift) await openChest('chapter');
+    if (state.level >= 4 && !state.notifAsked) {
+      state.notifAsked = true;
+      persist();
+      await askNotificationPermission();
+    }
+    if (M.maybeStartOffer(state)) {
+      persist();
+      showMenu('home');
+      setTimeout(openOffer, 500);
+      return;
+    }
+    if (toMenu || replay) showMenu(playingDaily ? 'home' : replay ? 'map' : 'home');
     else startLevel(state.level);
   };
   $('#bNext').onclick = () => proceed(false);
@@ -1078,6 +1248,12 @@ function showLevelUp(ups) {
   });
 }
 
+function nearMiss() {
+  const left = game.queue.length;
+  const pct = Math.round(((game.totalPassengers - left) / game.totalPassengers) * 100);
+  return `<div class="nearmiss"><b>${t('onlyLeft').replace('{n}', left)}</b><div class="mbar"><div style="width:${pct}%"></div></div></div>`;
+}
+
 const LOSE_INFO = {
   stuck: { icon: '🚦', cont: 'contAd', contCoins: 'contCoins' },
   moves: { icon: '🕹️', cont: 'contMovesAd', contCoins: 'contMoves' },
@@ -1093,7 +1269,8 @@ function onLose() {
   openModal(`
     <div class="big-ico">${info.icon}</div>
     <h2>${t('loseTitle')[reason]}</h2>
-    <p>${t('loseSub')}</p>
+    ${nearMiss()}
+    ${state.winStreak && !playingDaily ? `<div class="streakWarn">🔥 ${t('streakLose').replace('{n}', state.winStreak)}</div>` : `<p>${t('loseSub')}</p>`}
     <button class="btn yellow" id="bAd">▶ ${t(info.cont)}</button>
     <button class="btn blue" id="bCoins" ${canAfford ? '' : 'disabled'}>${t(info.contCoins)} · <span class="coin"></span>${ECONOMY.continueCost}</button>
     <div class="btnrow"><button class="btn ghost" id="bHome">🏠 ${t('home')}</button><button class="btn ghost" id="bRetry">↻ ${t('retry')}</button></div>
@@ -1108,8 +1285,14 @@ function onLose() {
     addCoins(-ECONOMY.continueCost);
     doContinue(reason);
   };
-  $('#bRetry').onclick = () => startLevel(playing);
-  $('#bHome').onclick = () => showMenu('home');
+  $('#bRetry').onclick = () => {
+    if (!playingDaily) resetStreak();
+    startLevel(playing, { daily: playingDaily });
+  };
+  $('#bHome').onclick = () => {
+    if (!playingDaily) resetStreak();
+    showMenu('home');
+  };
 }
 
 function doContinue(reason) {
@@ -1136,8 +1319,11 @@ function doContinue(reason) {
 }
 
 function consumeBooster(k) {
-  state.boosters[k]--;
-  usedBoosters++;
+  if (tempBoosters[k] > 0) tempBoosters[k]--;
+  else {
+    state.boosters[k]--;
+    usedBoosters++;
+  }
   missionToasts(M.track(state, 'boosters', 1));
   persist();
   updateHud();
@@ -1176,7 +1362,7 @@ function useBooster(k) {
 
 function boosterClick(k) {
   if (!game || ended) return;
-  if ((state.boosters[k] || 0) > 0 || (k === 'crane' && craneMode)) return useBooster(k);
+  if ((state.boosters[k] || 0) + (tempBoosters[k] || 0) > 0 || (k === 'crane' && craneMode)) return useBooster(k);
   const price = ECONOMY.prices[k];
   openModal(`
     <button class="closex">✕</button>
@@ -1230,8 +1416,14 @@ function openPause() {
     };
   });
   $('#pRes').onclick = closeModal;
-  $('#pRe').onclick = () => startLevel(playing);
-  $('#pHome').onclick = () => showMenu('home');
+  $('#pRe').onclick = () => {
+    if (!playingDaily) resetStreak();
+    startLevel(playing, { daily: playingDaily });
+  };
+  $('#pHome').onclick = () => {
+    if (!playingDaily) resetStreak();
+    showMenu('home');
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -1345,13 +1537,38 @@ async function boot() {
     return false;
   });
   onPause(() => suspendAudio());
-  document.addEventListener('visibilitychange', () => (document.hidden ? suspendAudio() : resumeAudio()));
+  initNotifications();
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      suspendAudio();
+      scheduleReminders({
+        dailyTitle: t('nDailyTitle'),
+        daily: t('nDaily'),
+        wheelTitle: t('nWheelTitle'),
+        wheel: t('nWheel'),
+        comebackTitle: t('nComebackTitle'),
+        comeback: t('nComeback').replace('{n}', state.level),
+        streakTitle: state.winStreak >= 2 ? t('nStreakTitle') : null,
+        streak: state.winStreak >= 2 ? t('nStreak').replace('{n}', state.winStreak) : null,
+      });
+    } else {
+      resumeAudio();
+      clearReminders();
+      if (!inGame) {
+        renderMenuTop();
+        if (tab === 'home') renderHome($('#menuBody'));
+      }
+    }
+  });
   window.__cc = {
     get state() {
       return state;
     },
     get game() {
       return game;
+    },
+    get levelData() {
+      return levelData;
     },
     startLevel,
     showMenu,

@@ -33,6 +33,15 @@ export function defaultState() {
     purchases: {},
     tutorialDone: false,
     seenMech: {},
+    winStreak: 0,
+    bestStreak: 0,
+    chestStars: 0,
+    chapterGifts: {},
+    dc: { day: null, done: false, streak: 0, last: null },
+    piggy: 0,
+    offerUntil: 0,
+    offerShown: false,
+    notifAsked: false,
   };
 }
 
@@ -203,4 +212,74 @@ export function freeCoinsLeft(state) {
 
 export function totalStars(state) {
   return Object.values(state.stars).reduce((s, x) => s + x, 0);
+}
+
+/* ---------------- win streak ---------------- */
+// tier 1: free Sort, tier 2: + free Crane, tier 3: + extra parking spot
+export function streakTier(state) {
+  return Math.min(3, state.winStreak || 0);
+}
+
+/* ---------------- star chest ---------------- */
+export const CHEST_STARS = 15;
+export function chestReady(state) {
+  return (state.chestStars || 0) >= CHEST_STARS;
+}
+export function rollChest(big = false) {
+  const coins = big ? 400 + Math.floor(Math.random() * 3) * 100 : 120 + Math.floor(Math.random() * 5) * 30;
+  const boosters = {};
+  const n = big ? 3 : 1 + (Math.random() < 0.4 ? 1 : 0);
+  for (let i = 0; i < n; i++) {
+    const k = ['crane', 'sort', 'slot'][Math.floor(Math.random() * 3)];
+    boosters[k] = (boosters[k] || 0) + 1;
+  }
+  return { coins, boosters };
+}
+export function grantChest(state, r) {
+  state.coins += r.coins;
+  for (const [k, n] of Object.entries(r.boosters)) state.boosters[k] = (state.boosters[k] || 0) + n;
+}
+
+/* ---------------- daily puzzle ---------------- */
+export function dcLevelNum() {
+  return 401 + (dayNumber(today()) % 600);
+}
+export function dcStatus(state) {
+  const d = today();
+  if (state.dc.day !== d) {
+    // streak survives only if yesterday was solved
+    const keep = state.dc.last && dayNumber(d) - dayNumber(state.dc.last) <= 1;
+    state.dc = { day: d, done: false, streak: keep ? state.dc.streak : 0, last: state.dc.last };
+  }
+  return { done: state.dc.done, streak: state.dc.streak, reward: 250 + Math.min(6, state.dc.streak) * 50 };
+}
+export function dcComplete(state) {
+  const st = dcStatus(state);
+  state.dc.done = true;
+  state.dc.last = today();
+  state.dc.streak += 1;
+  return st.reward;
+}
+
+/* ---------------- events ---------------- */
+export function weekendEvent() {
+  const d = new Date().getDay();
+  return d === 0 || d === 6;
+}
+
+/* ---------------- piggy bank ---------------- */
+export const PIGGY = { perWin: 40, cap: 4000, minBreak: 600 };
+export function feedPiggy(state, n = PIGGY.perWin) {
+  state.piggy = Math.min(PIGGY.cap, (state.piggy || 0) + n);
+}
+
+/* ---------------- limited starter offer ---------------- */
+export const OFFER_HOURS = 24;
+export function offerActive(state) {
+  return !state.purchases?.starter && state.offerUntil && Date.now() < state.offerUntil;
+}
+export function maybeStartOffer(state) {
+  if (state.purchases?.starter || state.offerUntil || state.level < 6) return false;
+  state.offerUntil = Date.now() + OFFER_HOURS * 3600 * 1000;
+  return true;
 }

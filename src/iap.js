@@ -10,6 +10,7 @@ export const PRODUCTS = [
   { key: 'coins_m', id: 'coins_medium', consumable: true, icon: '💰', fallback: '₺79,99', grant: { coins: 6500 }, badge: 'popular' },
   { key: 'coins_l', id: 'coins_large', consumable: true, icon: '🏦', fallback: '₺179,99', grant: { coins: 16000 } },
   { key: 'boosters', id: 'booster_bundle', consumable: true, icon: '🧰', fallback: '₺39,99', grant: { boosters: 5 } },
+  { key: 'piggy', id: 'piggy_bank', consumable: true, icon: '🐷', fallback: '₺59,99', grant: { piggy: true }, hidden: true },
 ];
 
 let ready = false;

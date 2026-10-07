@@ -46,6 +46,7 @@ Bu ID'lerle ürün oluşturulur (fiyatı sen belirlersin, oyun fiyatı Play'den 
 | `coins_medium` | 6.500 altın | tüketilebilir |
 | `coins_large` | 16.000 altın | tüketilebilir |
 | `booster_bundle` | Her güçlendiriciden 5 | tüketilebilir |
+| `piggy_bank` | Kumbaradaki altınlar (kumbarayı kırar) | tüketilebilir |
 
 ## 🏆 Liderlik tablosu (Google Play Games)
 Play Console → Play Games Services → kurulum: proje kimliği `strings.xml` → `game_services_project_id`, "En Yüksek Bölüm" liderlik tablosunun ID'si `src/config.js` → `GAMES.leaderboardId`. (Manifest'teki yorum satırı da açılır.)
