@@ -1,0 +1,8 @@
+{
+  "appId": "com.mehmetyusuf.commutecraze",
+  "appName": "Commute Craze",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#2f7bf5"
+  }
+}

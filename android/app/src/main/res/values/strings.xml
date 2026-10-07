@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Commute Craze</string>
+    <string name="title_activity_main">Commute Craze</string>
+    <string name="package_name">com.mehmetyusuf.commutecraze</string>
+    <string name="custom_url_scheme">com.mehmetyusuf.commutecraze</string>
+    <!-- AdMob App ID. This is Google's TEST app id; replace with your own (ca-app-pub-8983296148880903~XXXXXXXXXX) -->
+    <string name="admob_app_id">ca-app-pub-3940256099942544~3347511713</string>
+</resources>
