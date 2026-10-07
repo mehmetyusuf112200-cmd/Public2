@@ -5,7 +5,8 @@ Uygulama adı (30): Commute Craze: Bus Jam Puzzle
 Paket adı: com.mehmetyusuf.commutecraze
 Kategori: Oyun > Bulmaca (Puzzle)
 Etiketler: Bulmaca, Gündelik, Çevrimdışı
-Fiyat: Ücretsiz · Reklam içerir: EVET · Uygulama içi satın alma: HAYIR (şimdilik)
+Fiyat: Ücretsiz · Reklam içerir: EVET · Uygulama içi satın alma: EVET
+30 dilde görseller, video ve açıklamalar: store-assets dalı (https://github.com/mehmetyusuf112200-cmd/Public2/tree/store-assets)
 Gizlilik politikası: https://mehmetyusuf112200-cmd.github.io/commute-craze-privacy.html
 Hedef yaş grubu: 13+ (çocuklara yönelik DEĞİL – reklam politikası için önemli)
 

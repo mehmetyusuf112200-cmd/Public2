@@ -48,8 +48,7 @@
     art.append(el(`<div class="side r"><img class="icon" src="../play-icon-512.png"/><h1 class="logo" style="font-size:118px">Commute<b>Craze</b></h1></div>`));
   } else if (kind === 'cap') {
     // caption on the left (right for RTL), transparent background
-    const side = el(`<div class="side ${rtl ? 'r' : 'l'}"><h2 class="big" style="--fs:112px" dir="${rtl ? 'rtl' : 'ltr'}">${hl(L['s' + q.get('n')])}</h2></div>`);
-    if (rtl) art.append(el('<div style="position:absolute;inset:0"></div>'));
+    const side = el(`<div class="side l"><h2 class="big" style="--fs:112px" dir="${rtl ? 'rtl' : 'ltr'}">${hl(L['s' + q.get('n')])}</h2></div>`);
     art.append(side);
   } else if (kind === 'intro') {
     art.append(el('<div class="sky"></div>'), el('<div class="rays"></div>'), el('<img class="scene" src="./.work/scene.png"/>'));
