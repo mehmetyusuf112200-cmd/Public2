@@ -1,0 +1,72 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="./fonts.css" />
+<style>
+  html, body { margin: 0; background: transparent; }
+  #art { position: relative; width: 1920px; height: 1080px; overflow: hidden; font-family: var(--promo-font); }
+  .sky { position: absolute; inset: 0; background: radial-gradient(circle at 50% 35%, #8fe0ff 0, #3a9bff 40%, #1d55d8 100%); }
+  .rays { position: absolute; left: 50%; top: 35%; width: 4200px; height: 4200px; margin: -2100px 0 0 -2100px;
+    background: repeating-conic-gradient(from 0deg, rgba(255,255,255,.10) 0 6deg, rgba(255,255,255,0) 6deg 12deg);
+    -webkit-mask: radial-gradient(circle, #000 0, transparent 55%); mask: radial-gradient(circle, #000 0, transparent 55%); }
+  .logo { margin: 0; line-height: .88; font-family: 'Baloo 2', sans-serif; font-weight: 800; color: #fff; letter-spacing: -1px; text-align: center;
+    paint-order: stroke fill; -webkit-text-stroke: 16px #133a95; text-shadow: 0 10px 0 #133a95, 0 18px 30px rgba(0,0,0,.25); }
+  .logo b { display: block; color: #ffd43b; }
+  .side { position: absolute; top: 0; bottom: 0; width: 620px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; }
+  .side.r { right: 40px; } .side.l { left: 40px; }
+  .icon { width: 230px; height: 230px; border-radius: 52px; box-shadow: 0 0 0 8px #fff, 0 22px 40px rgba(0,0,0,.3); }
+  .big { margin: 0; color: #fff; font-weight: 800; line-height: 1.05; text-align: center; font-size: var(--fs, 96px);
+    paint-order: stroke fill; -webkit-text-stroke: 16px #133a95; text-shadow: 0 10px 0 #133a95, 0 20px 30px rgba(0,0,0,.25); text-wrap: balance; }
+  .big em { font-style: normal; color: #ffd43b; }
+  .scene { position: absolute; left: 50%; bottom: -90px; width: 1500px; margin-left: -750px; filter: drop-shadow(0 20px 20px rgba(0,0,0,.25)); }
+  .cta { background: linear-gradient(#5ee873, #22b14c); color: #fff; font-weight: 800; font-size: var(--cfs, 64px); padding: 22px 60px 16px; border-radius: 999px;
+    box-shadow: 0 10px 0 #137a33, 0 24px 40px rgba(0,0,0,.25); paint-order: stroke fill; -webkit-text-stroke: 8px #137a33; }
+</style>
+</head>
+<body>
+<div id="art"></div>
+<script type="module">
+  const q = new URLSearchParams(location.search);
+  const kind = q.get('kind');
+  const lang = q.get('lang') || 'en';
+  const C = await (await fetch('./captions.json')).json();
+  const L = C[lang];
+  const rtl = ['ar', 'fa', 'he', 'ur'].includes(lang);
+  document.documentElement.lang = lang;
+  const art = document.getElementById('art');
+  const el = (h) => { const t = document.createElement('template'); t.innerHTML = h.trim(); return t.content.firstChild; };
+  const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+  const hl = (s) => { // highlight last word
+    if (['zh', 'ja', 'th'].includes(lang) || !s.includes(' ')) return esc(s);
+    const i = s.lastIndexOf(' ');
+    return esc(s.slice(0, i + 1)) + '<em>' + esc(s.slice(i + 1)) + '</em>';
+  };
+  if (kind === 'bg') {
+    // language-neutral gameplay background: sky + logo/icon on the right
+    art.append(el('<div class="sky"></div>'), el('<div class="rays"></div>'));
+    art.append(el(`<div class="side r"><img class="icon" src="../play-icon-512.png"/><h1 class="logo" style="font-size:118px">Commute<b>Craze</b></h1></div>`));
+  } else if (kind === 'cap') {
+    // caption on the left (right for RTL), transparent background
+    const side = el(`<div class="side ${rtl ? 'r' : 'l'}"><h2 class="big" style="--fs:112px" dir="${rtl ? 'rtl' : 'ltr'}">${hl(L['s' + q.get('n')])}</h2></div>`);
+    if (rtl) art.append(el('<div style="position:absolute;inset:0"></div>'));
+    art.append(side);
+  } else if (kind === 'intro') {
+    art.append(el('<div class="sky"></div>'), el('<div class="rays"></div>'), el('<img class="scene" src="./.work/scene.png"/>'));
+    art.append(el(`<div style="position:absolute;left:120px;right:120px;top:90px;display:flex;justify-content:center"><h2 class="big" dir="${rtl ? 'rtl' : 'ltr'}" style="--fs:120px">${hl(L.v1)}</h2></div>`));
+  } else if (kind === 'end') {
+    art.append(el('<div class="sky"></div>'), el('<div class="rays"></div>'));
+    art.append(el(`<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:38px">
+      <img class="icon" src="../play-icon-512.png" style="width:260px;height:260px;border-radius:60px"/>
+      <h1 class="logo" style="font-size:150px">Commute <b style="display:inline">Craze</b></h1>
+      <div class="cta" dir="${rtl ? 'rtl' : 'ltr'}">${esc(L.v2)}</div></div>`));
+  }
+  await document.fonts.ready;
+  await Promise.all([...document.images].map((i) => (i.complete ? 0 : new Promise((r) => (i.onload = i.onerror = r)))));
+  // keep captions inside their box
+  const big = art.querySelector('.big');
+  if (big) { let fs = parseInt(getComputedStyle(big).fontSize); const max = kind === 'cap' ? 560 : 330; while (fs > 50 && big.getBoundingClientRect().height > max) { fs -= 4; big.style.setProperty('--fs', fs + 'px'); } }
+  window.__done = true;
+</script>
+</body>
+</html>

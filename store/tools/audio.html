@@ -1,0 +1,25 @@
+<!doctype html>
+<html><head><meta charset="utf-8" /></head>
+<body>
+<script type="module">
+  // Renders the trailer soundtrack (game music + timed game sound effects) to WAV.
+  import { renderOffline } from '../../src/audio.js';
+  window.renderWav = async (opts) => {
+    const buf = await renderOffline(opts);
+    const ch = [buf.getChannelData(0), buf.getChannelData(1)];
+    const n = buf.length, sr = buf.sampleRate;
+    const out = new DataView(new ArrayBuffer(44 + n * 4));
+    const w = (o, s) => [...s].forEach((c, i) => out.setUint8(o + i, c.charCodeAt(0)));
+    w(0, 'RIFF'); out.setUint32(4, 36 + n * 4, true); w(8, 'WAVE'); w(12, 'fmt ');
+    out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 2, true);
+    out.setUint32(24, sr, true); out.setUint32(28, sr * 4, true); out.setUint16(32, 4, true); out.setUint16(34, 16, true);
+    w(36, 'data'); out.setUint32(40, n * 4, true);
+    for (let i = 0; i < n; i++) for (let c = 0; c < 2; c++) out.setInt16(44 + i * 4 + c * 2, Math.max(-1, Math.min(1, ch[c][i])) * 32767, true);
+    const bytes = new Uint8Array(out.buffer);
+    let s = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return btoa(s);
+  };
+  window.__ready = true;
+</script>
+</body></html>

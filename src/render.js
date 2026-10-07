@@ -1015,7 +1015,7 @@ export class Renderer {
       }
       if (variant === 'city') {
         const dest = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.02), this.mat(0xffb300, { emissive: 0xffb300, emissiveIntensity: 0.8 }));
-        dest.position.set(0, 0.17 + bodyH - 0.08, -L / 2 - 0.005);
+        dest.position.set(0, 0.17 + bodyH - 0.08, -L / 2 - 0.03);
         inner.add(dest);
       }
     }

@@ -59,12 +59,25 @@ export function onPause(handler) {
 }
 
 /* ---------------- ads ---------------- */
-// Interstitials are only shown between levels (never mid-game) and never more
-// than once every ADS.interstitialCooldownSec seconds.
+// Interstitials are only shown at natural breaks (level end, retry, back to
+// menu) - never in the middle of a level. Two triggers:
+//   * every ADS.interstitialEveryNLevels won levels
+//   * every ADS.timedEverySec seconds of active play ("every 3 minutes")
+// and never closer together than ADS.interstitialCooldownSec.
 let adsReady = false;
 let lastInterstitial = Date.now();
 let interstitialLoaded = false;
 let rewardLoaded = false;
+let playingNow = false;
+let playSinceAd = 0;
+
+setInterval(() => {
+  if (playingNow && !document.hidden) playSinceAd++;
+}, 1000);
+/** true while a level is on screen and not paused */
+export function setPlaying(v) {
+  playingNow = !!v;
+}
 
 async function preloadInterstitial() {
   if (!adsReady || interstitialLoaded) return;
@@ -115,20 +128,41 @@ export async function showPrivacyOptions() {
   }
 }
 
-export async function maybeInterstitial(levelJustWon, noAds) {
-  if (noAds) return;
-  if (levelJustWon < ADS.interstitialFromLevel) return;
-  if (levelJustWon % ADS.interstitialEveryNLevels !== 0) return;
-  if ((Date.now() - lastInterstitial) / 1000 < ADS.interstitialCooldownSec) return;
-  if (!isNative || !adsReady || !interstitialLoaded) return;
+/**
+ * Call at a natural break.
+ * progress  = player's current level (no ads during the first levels)
+ * wonLevel  = level just won (null for retry / back-to-menu breaks)
+ */
+export async function maybeInterstitial(noAds, { progress = 0, wonLevel = null } = {}) {
+  if (noAds) return false;
+  if (progress < ADS.interstitialFromLevel) return false;
+  if ((Date.now() - lastInterstitial) / 1000 < ADS.interstitialCooldownSec) return false;
+  const timed = playSinceAd >= ADS.timedEverySec;
+  const byLevel = wonLevel != null && wonLevel % ADS.interstitialEveryNLevels === 0;
+  if (!timed && !byLevel) return false;
+  if (!isNative || !adsReady) return false;
+  // the 3-minute break has its own ad unit so it shows up separately in AdMob reports.
+  // The plugin holds one interstitial at a time, so it is loaded on demand.
+  const useTimed = timed && !!ADS.timedInterstitialId;
+  let shown = false;
   try {
+    if (useTimed) {
+      interstitialLoaded = false;
+      await Promise.race([
+        AdMob.prepareInterstitial({ adId: ADS.timedInterstitialId, isTesting: ADS.testing }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000)),
+      ]);
+    } else if (!interstitialLoaded) return false;
     interstitialLoaded = false;
     await AdMob.showInterstitial();
+    shown = true;
     lastInterstitial = Date.now();
+    playSinceAd = 0;
   } catch {
-    /* ignore */
+    /* no fill / timeout: try again at the next break */
   }
   preloadInterstitial();
+  return shown;
 }
 
 /** resolves true if the user earned the reward */
@@ -146,6 +180,7 @@ export async function showRewarded() {
   try {
     rewardLoaded = false;
     const item = await AdMob.showRewardVideoAd();
+    playSinceAd = 0;
     lastInterstitial = Date.now(); // don't stack an interstitial right after a rewarded ad
     preloadReward();
     return !!item;

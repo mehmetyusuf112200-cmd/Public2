@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  html, body { margin: 0; background: transparent; }
+  #art { position: relative; width: 1024px; height: 1024px; overflow: hidden; }
+  #bg { position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 50% 38%, rgba(255,255,255,.55) 0, rgba(255,255,255,0) 42%),
+      repeating-conic-gradient(from 0deg at 50% 40%, rgba(255,255,255,.10) 0 9deg, rgba(255,255,255,0) 9deg 18deg),
+      radial-gradient(circle at 50% 40%, #6fd0ff 0%, #2f8cff 52%, #1f4fd6 100%);
+  }
+  #bg::after { display:none; content: ''; position: absolute; left: -10%; right: -10%; bottom: -34%; height: 62%;
+    background: radial-gradient(ellipse at 50% 0%, #7ee07a 0%, #35b04e 55%, #1f8a3e 100%); border-radius: 50% 50% 0 0; }
+  canvas { position: absolute; inset: 0; width: 1024px; height: 1024px; }
+  body.fg #bg { display: none; }
+  body.bgonly canvas { display: none; }
+</style>
+</head>
+<body>
+<div id="art"><div id="bg"></div><canvas id="c" width="1024" height="1024"></canvas></div>
+<script type="module">
+  import { stage, vehicle, passenger, tree, bush, THREE } from './kit.js';
+  const q = new URLSearchParams(location.search);
+  { let sd = Number(q.get('seed') || 3); Math.random = () => ((sd = (sd * 16807) % 2147483647) / 2147483647); }
+  if (q.has('fg')) document.body.classList.add('fg');
+  if (q.has('bgonly')) document.body.classList.add('bgonly');
+  const wide = Number(q.get('wide') || 1); // >1: same shot, wider field (adaptive icon bleed)
+  const fov = (2 * Math.atan(Math.tan((26 * Math.PI) / 360) * wide) * 180) / Math.PI;
+  const S = stage(document.getElementById('c'), 1024, 1024, { fov });
+  if (wide > 1) document.getElementById('bg').style.transform = `scale(${1 / wide})`, document.getElementById('bg').style.inset = `${-(wide - 1) * 50}%`;
+  S.ground.material.opacity = q.has('fg') ? 0.0 : 0.3;
+
+  // round diorama island the bus stands on
+  const R0 = Number(q.get('isl') || 3.3);
+  const island = new THREE.Group();
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(R0, R0, 0.3, 72), new THREE.MeshStandardMaterial({ color: 0x4cc35a, roughness: 0.85 }));
+  top.position.y = -0.15; top.receiveShadow = true;
+  const side = new THREE.Mesh(new THREE.CylinderGeometry(R0 * 0.985, R0 * 0.93, 0.55, 72), new THREE.MeshStandardMaterial({ color: 0x9a6a3e, roughness: 0.9 }));
+  side.position.y = -0.55;
+  const road = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.02, R0 * 2.02), new THREE.MeshStandardMaterial({ color: 0x4a5160, roughness: 0.85 }));
+  road.receiveShadow = true;
+  road.position.set(0.45, 0.005, 0); road.rotation.y = Number(q.get('rot') || 0.55);
+  const dash = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
+  for (let k = -2; k <= 2; k++) { const d = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.025, 0.45), dash); d.position.set(0.72, 0, k * 1.2); road.add(d); }
+  island.add(top, side, road);
+  [[-2.3, -1.6, 1.25], [-1.2, -2.5, 1.05], [2.6, -2.0, 1.15]].forEach(([x, z, sc]) => { const t = tree(q.get('tree') || 'round'); t.position.set(x, 0, z); t.scale.setScalar(sc); island.add(t); });
+  [[-2.4, 0.4], [2.5, 1.2]].forEach(([x, z]) => { const b = bush(); b.position.set(x, 0, z); b.scale.setScalar(1.4); island.add(b); });
+  if (!q.has('fg')) S.scene.add(island);
+  S.ground.visible = false;
+
+  const bus = vehicle('bus', q.get('col') || 'yellow', q.get('var') || 'city', { noArrow: true });
+  bus.rotation.y = Math.PI + Number(q.get('rot') || 0.55);
+  bus.position.set(0.45, 0, -0.1);
+  S.scene.add(bus);
+
+  const cols = (q.get('pax') || 'yellow,red,blue').split(',');
+  cols.forEach((c, i) => {
+    const p = passenger(c);
+    p.scale.setScalar(1.6);
+    p.position.set(-0.95 - i * 0.5, 0, 1.6 - i * 0.62);
+    p.rotation.y = 0.35;
+    S.scene.add(p);
+  });
+
+  const zoom = Number(q.get('zoom') || 1);
+  S.camera.position.set(Number(q.get('cx') ?? -0.4), Number(q.get('cy') ?? 3.4), 8.2).multiplyScalar(1 / zoom);
+  S.camera.lookAt(Number(q.get('lx') ?? -0.15), Number(q.get('ly') ?? 0.35), 0.2);
+  S.render();
+  window.__done = true;
+</script>
+</body>
+</html>

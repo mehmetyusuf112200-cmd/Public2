@@ -1,0 +1,21 @@
+/* Extra script fonts used only when rendering store visuals in a headless
+   browser (phones already ship Noto fonts for these scripts). */
+@import url('/node_modules/@fontsource/baloo-2/800.css');
+@import url('/node_modules/@fontsource/baloo-2/600.css');
+@import url('/node_modules/@fontsource/baloo-bhaijaan-2/800.css');
+@import url('/node_modules/@fontsource/baloo-bhaijaan-2/600.css');
+@import url('/node_modules/@fontsource/baloo-da-2/800.css');
+@import url('/node_modules/@fontsource/baloo-da-2/600.css');
+@import url('/node_modules/@fontsource/rubik/800.css');
+@import url('/node_modules/@fontsource/rubik/600.css');
+@import url('/node_modules/@fontsource/mali/700.css');
+@import url('/node_modules/@fontsource/noto-sans-arabic/800.css');
+@import url('/node_modules/@fontsource/noto-sans-hebrew/800.css');
+:root { --promo-font: 'Baloo 2', 'Baloo Bhaijaan 2', 'Baloo Da 2', 'Rubik', 'Mali', 'Noto Sans Arabic', 'Noto Sans Hebrew', 'Noto Sans CJK SC', sans-serif; }
+:lang(ja) { --promo-font: 'Baloo 2', 'Noto Sans CJK JP', sans-serif; }
+:lang(ko) { --promo-font: 'Baloo 2', 'Noto Sans CJK KR', sans-serif; }
+:lang(zh) { --promo-font: 'Baloo 2', 'Noto Sans CJK SC', sans-serif; }
+:lang(he) { --promo-font: 'Rubik', 'Noto Sans Hebrew', sans-serif; }
+:lang(th) { --promo-font: 'Mali', 'Baloo 2', sans-serif; }
+:lang(ar), :lang(fa), :lang(ur) { --promo-font: 'Baloo Bhaijaan 2', 'Noto Sans Arabic', sans-serif; }
+:lang(bn) { --promo-font: 'Baloo Da 2', sans-serif; }

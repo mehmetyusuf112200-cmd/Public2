@@ -159,6 +159,11 @@ button {
 .badge.super {
   background: #7b2ff5;
 }
+/* long translations (e.g. "очень сложно") must never push the coins off screen */
+.topbar .levelpill { min-width: 0; flex-shrink: 1; padding: 4px 14px; }
+.topbar .levelpill #levelText { flex-shrink: 0; }
+.topbar .levelpill .badge { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.topbar .coins, .topbar #btnPause { flex-shrink: 0; }
 .progress {
   position: absolute;
   top: calc(var(--safe-top) + 64px);

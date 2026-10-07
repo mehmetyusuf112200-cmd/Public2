@@ -9,6 +9,10 @@ export const ADS = {
   interstitialFromLevel: 6, // no interstitials during the first levels
   interstitialEveryNLevels: 3,
   interstitialCooldownSec: 120,
+  // "every 3 minutes" break: after 180 s of active play the next natural break
+  // (level end, retry, back to menu) shows an interstitial from its own ad unit
+  timedEverySec: 180,
+  timedInterstitialId: 'ca-app-pub-8983296148880903/2002385294', // AdMob: max 1 per user per 3 min
 };
 
 // ---------------------------------------------------------------------------

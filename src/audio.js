@@ -2,6 +2,7 @@
 let ctx = null;
 let master, sfxGain, musicGain, musicBus, noiseBuf;
 export const audioState = { sfx: true, music: true };
+let timeShift = 0; // only used by renderOffline()
 const MUSIC_VOL = 0.22;
 
 function ensure() {
@@ -9,28 +10,33 @@ function ensure() {
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return null;
   ctx = new AC();
-  master = ctx.createGain();
+  buildGraph(ctx);
+  return ctx;
+}
+
+function buildGraph(c) {
+  master = c.createGain();
   master.gain.value = 0.9;
-  const comp = ctx.createDynamicsCompressor();
+  const comp = c.createDynamicsCompressor();
   comp.threshold.value = -14;
   comp.ratio.value = 3;
   master.connect(comp);
-  comp.connect(ctx.destination);
-  sfxGain = ctx.createGain();
+  comp.connect(c.destination);
+  sfxGain = c.createGain();
   sfxGain.gain.value = audioState.sfx ? 0.6 : 0;
   sfxGain.connect(master);
-  musicGain = ctx.createGain();
+  musicGain = c.createGain();
   musicGain.gain.value = audioState.music ? MUSIC_VOL : 0;
   musicGain.connect(master);
   // gentle reverb-ish echo on music
-  musicBus = ctx.createGain();
-  const delay = ctx.createDelay();
+  musicBus = c.createGain();
+  const delay = c.createDelay();
   delay.delayTime.value = 0.28;
-  const fb = ctx.createGain();
+  const fb = c.createGain();
   fb.gain.value = 0.22;
-  const wet = ctx.createGain();
+  const wet = c.createGain();
   wet.gain.value = 0.25;
-  const lp = ctx.createBiquadFilter();
+  const lp = c.createBiquadFilter();
   lp.type = 'lowpass';
   lp.frequency.value = 2400;
   musicBus.connect(musicGain);
@@ -40,11 +46,10 @@ function ensure() {
   fb.connect(delay);
   lp.connect(wet);
   wet.connect(musicGain);
-  const len = ctx.sampleRate;
-  noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const len = c.sampleRate;
+  noiseBuf = c.createBuffer(1, len, c.sampleRate);
   const d = noiseBuf.getChannelData(0);
   for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-  return ctx;
 }
 
 export function unlockAudio() {
@@ -72,7 +77,7 @@ function tone({ freq = 440, type = 'sine', dur = 0.12, vol = 0.5, attack = 0.005
   const c = ensure();
   if (!c) return;
   if (!dest && !audioState.sfx) return;
-  const t = at ?? c.currentTime + when;
+  const t = at ?? c.currentTime + timeShift + when;
   const o = c.createOscillator();
   const g = c.createGain();
   o.type = type;
@@ -92,7 +97,7 @@ function noise({ dur = 0.2, vol = 0.3, freq = 1200, type = 'bandpass', at = null
   const c = ensure();
   if (!c) return;
   if (!dest && !audioState.sfx) return;
-  const t = at ?? c.currentTime + when;
+  const t = at ?? c.currentTime + timeShift + when;
   const s = c.createBufferSource();
   s.buffer = noiseBuf;
   const f = c.createBiquadFilter();
@@ -397,4 +402,38 @@ export function startSong(id) {
   step = 0;
   nextStepTime = c.currentTime + 0.1;
   if (!schedTimer) schedTimer = setInterval(scheduler, 40);
+}
+
+/**
+ * Render a song plus timed sound effects into an AudioBuffer (used to make the
+ * store trailer soundtrack). events: [{ t: seconds, name: 'tap' | 'board' ..., args: [] }]
+ */
+export async function renderOffline({ song = 'city', seconds = 20, events = [], musicVol = MUSIC_VOL * 1.6, fadeOut = 1.5 } = {}) {
+  const saved = [ctx, master, sfxGain, musicGain, musicBus, noiseBuf];
+  const sr = 44100;
+  const oc = new OfflineAudioContext(2, Math.ceil(sr * seconds), sr);
+  ctx = oc;
+  try {
+    buildGraph(oc);
+    musicGain.gain.value = musicVol;
+    sfxGain.gain.value = 0.6;
+    const fg = oc.createGain();
+    fg.gain.setValueAtTime(0, 0);
+    fg.gain.linearRampToValueAtTime(1, 0.6);
+    fg.gain.setValueAtTime(1, Math.max(0.7, seconds - fadeOut));
+    fg.gain.linearRampToValueAtTime(0, seconds);
+    fg.connect(musicBus);
+    const S = SONGS[song] || SONGS.menu;
+    const spb = 60 / S.bpm / 4;
+    for (let st = 0, t = 0.05; t < seconds; st++, t += spb) playStep(S, st, t, fg);
+    for (const e of events) {
+      timeShift = e.t;
+      sfx[e.name]?.(...(e.args || []));
+    }
+    timeShift = 0;
+    return await oc.startRendering();
+  } finally {
+    timeShift = 0;
+    [ctx, master, sfxGain, musicGain, musicBus, noiseBuf] = saved;
+  }
 }

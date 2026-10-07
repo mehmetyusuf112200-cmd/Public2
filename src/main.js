@@ -5,7 +5,7 @@ import { Game, generateLevel, levelParams, levelMechanics, MAX_LEVEL } from './c
 import { Renderer } from './render.js';
 import { t, setLang, getLang, fmt, LANGS, detectLang, dayLabel } from './i18n.js';
 import { sfx, unlockAudio, setSfx, setMusic, suspendAudio, resumeAudio, audioState, startSong } from './audio.js';
-import { loadSave, writeSave, haptics, initAds, maybeInterstitial, showRewarded, showPrivacyOptions, onBackButton, onPause, isNative } from './platform.js';
+import { loadSave, writeSave, haptics, initAds, maybeInterstitial, setPlaying, showRewarded, showPrivacyOptions, onBackButton, onPause, isNative } from './platform.js';
 import { ECONOMY, PRIVACY_URL } from './config.js';
 import { THEMES, STYLES, themeForLevel, chapterOf, CHAPTER_SIZE } from './theme.js';
 import * as M from './meta.js';
@@ -163,6 +163,7 @@ function openModal(html, { onClose, tone = 'sun' } = {}) {
 }
 function closeModal() {
   $('#modal').classList.add('hidden');
+  if (inGame && game && !ended) setPlaying(true);
 }
 function modalOpen() {
   return !$('#modal').classList.contains('hidden');
@@ -251,6 +252,7 @@ async function rewarded() {
 /* MENU                                                                */
 /* ------------------------------------------------------------------ */
 function showMenu(toTab = 'home') {
+  setPlaying(false);
   inGame = false;
   game = null;
   timeLeft = null;
@@ -1153,6 +1155,7 @@ function updateProgress() {
 }
 
 function startLevel(n, opts = {}) {
+  setPlaying(true);
   closeModal();
   playing = n;
   playingDaily = !!opts.daily;
@@ -1356,7 +1359,7 @@ function onWin() {
     $('#bNext').disabled = true;
     $('#bHome').disabled = true;
     await new Promise((r) => setTimeout(r, 700));
-    if (!replay) await maybeInterstitial(won, state.noAds);
+    await maybeInterstitial(state.noAds, { progress: state.level, wonLevel: replay ? null : won });
     if (ups.length) await showLevelUp(ups);
     if (chapterGift) await openChest('chapter');
     if (state.level >= 4 && !state.notifAsked) {
@@ -1410,6 +1413,12 @@ const LOSE_INFO = {
   moves: { icon: '🕹️', cont: 'contMovesAd', contCoins: 'contMoves' },
   time: { icon: '⏰', cont: 'contTimeAd', contCoins: 'contTime' },
 };
+/** natural break (retry / back to menu): the 3-minute interstitial may show here */
+async function adBreak() {
+  setPlaying(false);
+  await maybeInterstitial(state.noAds, { progress: state.level });
+}
+
 function onLose() {
   if (!inGame || !game) return;
   sfx.lose();
@@ -1436,12 +1445,14 @@ function onLose() {
     addCoins(-ECONOMY.continueCost);
     doContinue(reason);
   };
-  $('#bRetry').onclick = () => {
+  $('#bRetry').onclick = async () => {
     if (!playingDaily) resetStreak();
+    await adBreak();
     startLevel(playing, { daily: playingDaily });
   };
-  $('#bHome').onclick = () => {
+  $('#bHome').onclick = async () => {
     if (!playingDaily) resetStreak();
+    await adBreak();
     showMenu('home');
   };
 }
@@ -1561,16 +1572,19 @@ function openPause() {
     { tone: 'grape' }
   );
   bindChips();
+  setPlaying(false);
   $('#pRes').onclick = () => {
     sfx.click();
     closeModal();
   };
-  $('#pRe').onclick = () => {
+  $('#pRe').onclick = async () => {
     if (!playingDaily) resetStreak();
+    await adBreak();
     startLevel(playing, { daily: playingDaily });
   };
-  $('#pHome').onclick = () => {
+  $('#pHome').onclick = async () => {
     if (!playingDaily) resetStreak();
+    await adBreak();
     showMenu('home');
   };
   $('#pSet').onclick = openSettings;
@@ -1723,6 +1737,10 @@ async function boot() {
     },
     startLevel,
     showMenu,
+    closeModal,
+    openWheel,
+    openDaily,
+    sfx,
     R,
   };
 }

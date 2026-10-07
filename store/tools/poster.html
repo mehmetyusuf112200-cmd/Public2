@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="./fonts.css" />
+<style>
+  html, body { margin: 0; background: #000; }
+  #art { position: relative; width: 1080px; height: 1920px; overflow: hidden; font-family: var(--promo-font); }
+  .bg { position: absolute; inset: 0; background: var(--bg); }
+  .rays { position: absolute; left: 50%; top: 9%; width: 3000px; height: 3000px; margin: -1500px 0 0 -1500px;
+    background: repeating-conic-gradient(from 0deg, rgba(255,255,255,.09) 0 8deg, rgba(255,255,255,0) 8deg 16deg);
+    -webkit-mask: radial-gradient(circle, #000 0, transparent 62%); mask: radial-gradient(circle, #000 0, transparent 62%); }
+  .blob { position: absolute; border-radius: 50%; filter: blur(2px); opacity: .55; }
+  .dot { position: absolute; border-radius: 50%; }
+  .cap { position: absolute; left: 60px; right: 60px; top: 70px; height: 300px; display: flex; align-items: center; justify-content: center; text-align: center; }
+  .cap h1 { margin: 0; color: #fff; font-weight: 800; line-height: 1.05; letter-spacing: -0.5px;
+    font-size: var(--fs, 104px); text-wrap: balance; paint-order: stroke fill; -webkit-text-stroke: 14px var(--ink); text-shadow: 0 10px 0 var(--ink), 0 18px 30px rgba(0,0,0,.25); }
+  .cap h1 em { font-style: normal; color: var(--hl); }
+  .phone { position: absolute; left: 50%; top: 420px; width: 800px; height: 1480px; margin-left: -418px; padding: 18px;
+    background: #10131a; border-radius: 86px; box-shadow: 0 0 0 6px rgba(255,255,255,.9), 0 40px 80px rgba(0,0,0,.35); transform: rotate(var(--tilt, 0deg)); }
+  .phone img { display: block; width: 800px; height: 1480px; border-radius: 70px; object-fit: cover; object-position: top; }
+  .sticker { position: absolute; font-size: 120px; filter: drop-shadow(0 10px 10px rgba(0,0,0,.25)); z-index: 3; }
+  .tap { position: absolute; z-index: 4; width: 170px; height: 170px; }
+  .tap .ring { position: absolute; inset: 0; border-radius: 50%; border: 12px solid #fff; box-shadow: 0 0 0 8px rgba(0,0,0,.12); }
+  .tap .hand { position: absolute; left: 70px; top: 60px; font-size: 150px; transform: rotate(-18deg); filter: drop-shadow(0 8px 6px rgba(0,0,0,.3)); }
+</style>
+</head>
+<body>
+<div id="art">
+  <div class="bg"></div><div class="rays"></div>
+  <div id="deco"></div>
+  <div class="cap"><h1 id="h"></h1></div>
+  <div class="phone"><img id="shot" /></div>
+</div>
+<script type="module">
+  const q = new URLSearchParams(location.search);
+  const lang = q.get('lang') || 'en';
+  const n = Number(q.get('n') || 1);
+  const C = await (await fetch('./captions.json')).json();
+  const RTL = ['ar', 'fa', 'he', 'ur'].includes(lang);
+  document.documentElement.lang = lang;
+  document.documentElement.dir = RTL ? 'rtl' : 'ltr';
+  // per-screenshot palette: background, outline ink, highlight
+  const P = {
+    1: ['radial-gradient(circle at 50% 12%, #7fe3ff 0, #2c8cff 45%, #1b4fd8 100%)', '#163f9e', '#ffe14a'],
+    2: ['radial-gradient(circle at 50% 12%, #ffe27a 0, #ff9f1c 48%, #f2631c 100%)', '#a8410b', '#fff3a6'],
+    3: ['radial-gradient(circle at 50% 12%, #ff8fb1 0, #e83e7d 48%, #9b1f6b 100%)', '#6a1048', '#ffe14a'],
+    4: ['radial-gradient(circle at 50% 12%, #9ff08a 0, #2fc36b 48%, #138a52 100%)', '#0d5a36', '#fff36a'],
+    5: ['radial-gradient(circle at 50% 12%, #c9a2ff 0, #8a4cf0 48%, #5320b8 100%)', '#36137e', '#ffe14a'],
+    6: ['radial-gradient(circle at 50% 12%, #6ff0e0 0, #14b8b0 48%, #0b7a86 100%)', '#07505a', '#fff36a'],
+  }[n];
+  const art = document.getElementById('art');
+  art.style.setProperty('--bg', P[0]);
+  art.style.setProperty('--ink', P[1]);
+  art.style.setProperty('--hl', P[2]);
+  art.style.setProperty('--tilt', (n % 2 ? -2.2 : 2.2) + 'deg');
+  // caption: highlight the last word (or the whole thing for scripts without spaces)
+  let text = C[lang]['s' + n];
+  const h = document.getElementById('h');
+  const noSpace = ['zh', 'ja', 'th'].includes(lang);
+  if (!noSpace && text.includes(' ')) {
+    const i = text.lastIndexOf(' ');
+    h.innerHTML = '';
+    h.append(text.slice(0, i + 1));
+    const em = document.createElement('em');
+    em.textContent = text.slice(i + 1);
+    h.append(em);
+  } else h.textContent = text;
+  document.getElementById('shot').src = q.get('img');
+  // decoration
+  const deco = document.getElementById('deco');
+  const rnd = (() => { let s = n * 97 + lang.length * 13; return () => ((s = (s * 16807) % 2147483647) / 2147483647); })();
+  for (let i = 0; i < 18; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot';
+    const r = 10 + rnd() * 26;
+    Object.assign(d.style, { width: r + 'px', height: r + 'px', left: rnd() * 1080 + 'px', top: 300 + rnd() * 1600 + 'px', background: `rgba(255,255,255,${0.15 + rnd() * 0.3})` });
+    deco.append(d);
+  }
+  const stickers = { 1: ['🚌', '✨'], 2: ['🎨', '⭐'], 3: ['🔥', '⏱️'], 4: ['🗺️', '🌴'], 5: ['🎁', '🪙'], 6: ['🏆', '⭐'] }[n];
+  const sp = [[30, 1330], [930, 560]];
+  stickers.forEach((s, i) => { const e = document.createElement('div'); e.className = 'sticker'; e.textContent = s; e.style.left = sp[i][0] + 'px'; e.style.top = sp[i][1] + 'px'; e.style.transform = `rotate(${i ? 14 : -12}deg)`; art.append(e); });
+  if (n === 1) { // tap hint on the first screenshot
+    const t = document.createElement('div');
+    t.className = 'tap';
+    t.innerHTML = '<div class="ring"></div><div class="hand">👆</div>';
+    Object.assign(t.style, { left: q.get('tx') || '330px', top: q.get('ty') || '1080px' });
+    art.append(t);
+  }
+  // shrink long captions to fit 2 lines
+  await document.fonts.ready;
+  await new Promise((r) => (document.getElementById('shot').complete ? r() : (document.getElementById('shot').onload = r)));
+  let fs = 104;
+  while (fs > 60 && h.getBoundingClientRect().height > 250) { fs -= 4; art.style.setProperty('--fs', fs + 'px'); }
+  window.__done = true;
+</script>
+</body>
+</html>
