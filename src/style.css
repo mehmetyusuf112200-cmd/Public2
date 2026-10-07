@@ -1236,3 +1236,170 @@ button {
   text-align: center;
   margin-top: 8px;
 }
+
+/* ---------- challenge HUD ---------- */
+.challenge {
+  position: absolute;
+  top: calc(var(--safe-top) + 62px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+}
+.challenge .ch {
+  background: #fff;
+  border-radius: 999px;
+  padding: 2px 14px;
+  font-weight: 800;
+  font-size: 20px;
+  box-shadow: 0 3px 0 #c9d4e3, 0 4px 10px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+}
+.challenge .ch.warn {
+  background: var(--red);
+  color: #fff;
+  box-shadow: 0 3px 0 #a8241b;
+  animation: pulse 0.6s infinite;
+}
+.challenge:not(.hidden) ~ .progress {
+  top: calc(var(--safe-top) + 100px);
+}
+.challenge:not(.hidden) ~ .tip {
+  top: calc(var(--safe-top) + 116px);
+}
+
+/* ---------- home over the 3D board ---------- */
+.menu.homeMode .sky {
+  display: none;
+}
+.menu.homeMode::before,
+.menu.homeMode::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+.menu.homeMode::before {
+  top: 0;
+  height: 150px;
+  background: linear-gradient(rgba(47, 123, 245, 0.55), rgba(47, 123, 245, 0));
+}
+.menu.homeMode::after {
+  bottom: 0;
+  height: 48%;
+  background: linear-gradient(rgba(20, 40, 90, 0), rgba(20, 40, 90, 0.55) 45%, rgba(20, 40, 90, 0.8));
+}
+.menu.homeMode .menu-body {
+  overflow: hidden;
+  z-index: 1;
+}
+.menu.homeMode .menu-top,
+.menu.homeMode .tabs {
+  z-index: 2;
+}
+.titlebar {
+  text-align: center;
+  font-weight: 800;
+  font-size: 30px;
+  color: #fff;
+  text-shadow: 0 3px 0 #143f8f, 0 0 12px rgba(0, 0, 0, 0.25);
+  margin-top: 2px;
+  line-height: 1;
+}
+.titlebar b {
+  color: var(--yellow);
+}
+.homeBottom {
+  margin-top: auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 2vh;
+}
+.homeBottom .big {
+  margin: 4px 0 0;
+}
+.strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.snode {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 16px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.25);
+  border: 3px solid #fff;
+  flex: none;
+}
+.snode.ghost {
+  visibility: hidden;
+}
+.snode.done {
+  background: var(--green);
+}
+.snode.next {
+  background: #8ea2c8;
+}
+.snode.next.hard {
+  background: #e57373;
+}
+.snode.next.superhard {
+  background: #9575cd;
+}
+.snode.cur {
+  width: 58px;
+  height: 58px;
+  font-size: 22px;
+  background: var(--blue);
+  box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.35);
+  animation: pulse 1.2s infinite;
+}
+.snode.cur.hard {
+  background: var(--red);
+}
+.snode.cur.superhard {
+  background: #7b2ff5;
+}
+.slink {
+  width: 18px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 3px;
+}
+.slink.done {
+  background: var(--green);
+}
+.mchips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.mchip {
+  background: #fff;
+  border-radius: 999px;
+  padding: 1px 12px;
+  font-weight: 800;
+  font-size: 14px;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.15);
+}
+.node .nmech {
+  position: absolute;
+  top: -10px;
+  right: -12px;
+  font-size: 14px;
+  background: #fff;
+  border-radius: 999px;
+  padding: 0 4px;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15);
+  line-height: 1.3;
+}

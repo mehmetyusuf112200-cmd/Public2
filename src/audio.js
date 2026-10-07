@@ -163,6 +163,13 @@ export const sfx = {
   levelUp() {
     [523, 659, 784, 1047, 1319].forEach((f, i) => tone({ freq: f, type: 'square', dur: 0.18, vol: 0.12, when: i * 0.08 }));
   },
+  shatter() {
+    noise({ dur: 0.35, vol: 0.3, freq: 4200, q: 0.8 });
+    [1568, 2093, 2637].forEach((f, i) => tone({ freq: f, type: 'sine', dur: 0.15, vol: 0.08, when: i * 0.04 }));
+  },
+  alarm() {
+    tone({ freq: 880, type: 'square', dur: 0.08, vol: 0.08 });
+  },
   tick() {
     tone({ freq: 1200, type: 'square', dur: 0.025, vol: 0.08 });
   },

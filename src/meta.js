@@ -32,6 +32,7 @@ export function defaultState() {
     stats: { wins: 0, passengers: 0, departures: 0, boosters: 0, hardWins: 0, threeStars: 0, spins: 0, noBoosterWins: 0, ads: 0 },
     purchases: {},
     tutorialDone: false,
+    seenMech: {},
   };
 }
 

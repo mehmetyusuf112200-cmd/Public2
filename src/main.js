@@ -1,7 +1,7 @@
 import '@fontsource/baloo-2/600.css';
 import '@fontsource/baloo-2/800.css';
 import './style.css';
-import { Game, generateLevel, levelParams } from './core/logic.js';
+import { Game, generateLevel, levelParams, levelMechanics, MAX_LEVEL } from './core/logic.js';
 import { Renderer } from './render.js';
 import { t, setLang, getLang, fmt } from './i18n.js';
 import { sfx, unlockAudio, setSfx, setMusic, suspendAudio, resumeAudio, audioState, startSong } from './audio.js';
@@ -25,6 +25,10 @@ let usedBoosters = 0;
 let usedContinue = 0;
 let tab = 'home';
 let inGame = false;
+let timeLeft = null;
+let timerStarted = false;
+let lastAlarm = 0;
+let previewLevel = 0;
 
 const R = new Renderer($('#scene'));
 R.onPick = onPick;
@@ -35,6 +39,9 @@ R.onBoard = () => {
   updateProgress();
 };
 R.onDepart = () => missionToasts(M.track(state, 'departures', 1));
+R.onLockedSlot = () => {
+  if (inGame && !ended) boosterClick('slot');
+};
 
 /* ------------------------------------------------------------------ */
 /* helpers                                                             */
@@ -216,15 +223,28 @@ async function rewarded() {
 function showMenu(toTab = 'home') {
   inGame = false;
   game = null;
+  timeLeft = null;
   closeModal();
   tip(null);
   $('#hud').classList.add('hidden');
   $('#menu').classList.remove('hidden', 'fade');
-  R.paused = true;
   startSong('menu');
   tab = toTab;
+  previewLevel = 0;
   renderMenuTop();
   renderTab();
+}
+
+/** the home tab shows the next level's 3D board behind the menu */
+function showPreview() {
+  if (previewLevel === state.level && !R.paused) return;
+  previewLevel = state.level;
+  const lv = generateLevelCached(state.level);
+  const pg = new Game(lv);
+  R.padding = { top: 120, bottom: 300, side: 6 };
+  R.setStyle(state.style);
+  R.loadLevel(pg, themeForLevel(state.level));
+  R.paused = false;
 }
 
 function renderMenuTop() {
@@ -256,12 +276,22 @@ function renderTab() {
   const theme = themeForLevel(state.level);
   const menu = $('#menu');
   const [g1, g2] = theme.map;
-  menu.style.background = `linear-gradient(#5fb4ff 0%, #8fd2ff 45%, ${g1} 45.2%, ${g2} 100%)`;
-  if (tab === 'home') renderHome(body);
+  const home = tab === 'home';
+  menu.classList.toggle('homeMode', home);
+  menu.style.background = home ? 'transparent' : `linear-gradient(#5fb4ff 0%, #8fd2ff 30%, ${g1} 30.2%, ${g2} 100%)`;
+  if (home) showPreview();
+  else R.paused = true;
+  if (home) renderHome(body);
   else if (tab === 'map') renderMap(body);
   else if (tab === 'shop') renderShop(body);
   else if (tab === 'missions') renderMissions(body);
   else renderRank(body);
+}
+
+const MECH_ICON = { moves: '🕹️', time: '⏱️', ice: '🧊', colorSlots: '⭐' };
+function mechList(lv) {
+  const m = lv.mech || {};
+  return Object.keys(MECH_ICON).filter((k) => m[k]);
 }
 
 function renderHome(body) {
@@ -269,8 +299,23 @@ function renderHome(body) {
   const theme = themeForLevel(state.level);
   const daily = M.dailyStatus(state).available;
   const wheel = M.wheelStatus(state).free;
+  const strip = [];
+  for (let n = state.level - 2; n <= state.level + 2; n++) {
+    if (n < 1) {
+      strip.push('<span class="snode ghost"></span>');
+      continue;
+    }
+    const cls = n < state.level ? 'done' : n === state.level ? 'cur ' + lp.difficulty : 'next ' + difficultyOf(n);
+    const label = n < state.level ? '✔' : n % CHAPTER_SIZE === 0 && n > state.level ? '🎁' : n;
+    strip.push(`<span class="snode ${cls}">${label}</span>`);
+    if (n < state.level + 2) strip.push(`<span class="slink ${n < state.level ? 'done' : ''}"></span>`);
+  }
+  const mech = mechList(lp)
+    .map((k) => `<span class="mchip">${MECH_ICON[k]} ${t('mech')[k]}</span>`)
+    .join('');
   body.innerHTML = `
     <div class="home">
+      <div class="titlebar"><span>Commute</span> <b>Craze</b></div>
       <div class="sidecol left">
         <button class="side ${daily ? 'glow' : ''}" id="sDaily"><span class="si">📅</span>${t('daily')}${daily ? '<i class="dot"></i>' : ''}</button>
         <button class="side ${wheel ? 'glow' : ''}" id="sWheel"><span class="si">🎡</span>${t('wheel')}${wheel ? '<i class="dot"></i>' : ''}</button>
@@ -279,12 +324,12 @@ function renderHome(body) {
         ${state.noAds ? '' : `<button class="side" id="sNoAds"><span class="si">🚫</span>${t('noAds')}</button>`}
         <button class="side" id="sFree"><span class="si">🎬</span>${t('freeCoins')}</button>
       </div>
-      <div class="logo">
-        <div class="logo-bus">🚌</div>
-        <h1>Commute<br /><span>Craze</span></h1>
+      <div class="homeBottom">
+        <div class="chapterTag">${t('chapter')} ${chapterOf(state.level) + 1} · ${theme.name[getLang()]}</div>
+        <div class="strip">${strip.join('')}</div>
+        ${mech ? `<div class="mchips">${mech}</div>` : ''}
+        <button class="big ${lp.difficulty}" id="btnPlay"><small>${t('level')} ${state.level}${lp.difficulty !== 'normal' ? ' · ' + t(lp.difficulty) : ''}</small>${t('play')}</button>
       </div>
-      <div class="chapterTag">${t('chapter')} ${chapterOf(state.level) + 1} · ${theme.name[getLang()]}</div>
-      <button class="big ${lp.difficulty}" id="btnPlay"><small>${t('level')} ${state.level}${lp.difficulty !== 'normal' ? ' · ' + t(lp.difficulty) : ''}</small>${t('play')}</button>
     </div>`;
   $('#btnPlay').onclick = () => {
     sfx.tap();
@@ -305,6 +350,10 @@ function generateLevelCached(n) {
   }
   return levelCache.get(n);
 }
+function mechOf(n) {
+  const m = levelMechanics(n);
+  return (m.moves ? '🕹️' : '') + (m.time ? '⏱️' : '') + (m.ice ? '🧊' : '') + (m.colorSlots ? '⭐' : '');
+}
 function difficultyOf(n) {
   const sp = levelParams(n).spike;
   return sp === 2 && n >= 10 ? 'superhard' : sp >= 1 && n >= 5 ? 'hard' : 'normal';
@@ -312,7 +361,7 @@ function difficultyOf(n) {
 
 function renderMap(body) {
   const cur = state.level;
-  const lastChapter = chapterOf(cur) + 1;
+  const lastChapter = Math.ceil(MAX_LEVEL / CHAPTER_SIZE) - 1;
   let html = '<div class="mapwrap">';
   for (let c = lastChapter; c >= 0; c--) {
     const theme = THEMES[c % THEMES.length];
@@ -326,7 +375,8 @@ function renderMap(body) {
       const diff = difficultyOf(n);
       const cls = locked ? 'locked' : isCur ? 'current' : diff;
       const starsHtml = !locked && !isCur ? `<span class="nstars">${'⭐'.repeat(st)}</span>` : '';
-      rows += `<div class="noderow"><button class="node ${cls}" data-n="${n}" ${isCur ? 'id="curNode"' : ''}>${locked ? (n === end ? '🎁' : n) : n}${starsHtml}</button></div>`;
+      const mi = n >= 7 ? mechOf(n) : '';
+      rows += `<div class="noderow"><button class="node ${cls}" data-n="${n}" ${isCur ? 'id="curNode"' : ''}>${n === end && locked ? '🎁' : n}${starsHtml}${mi ? `<span class="nmech">${mi}</span>` : ''}</button></div>`;
     }
     html += `<div class="chapterHead" style="background:${theme.map[1]}">${t('chapter')} ${c + 1}<small>${theme.name[getLang()]}</small></div>
       <div class="path" style="background:${theme.map[0]}55">${rows}</div>`;
@@ -338,7 +388,7 @@ function renderMap(body) {
       const n = +b.dataset.n;
       if (n > cur) {
         sfx.bump();
-        return toast(t('locked'));
+        return toast(`🔒 ${t('locked')} — ${t('level')} ${cur}`);
       }
       sfx.tap();
       startLevel(n);
@@ -788,7 +838,21 @@ function updateHud() {
     c.classList.toggle('plus', n === 0);
     el.classList.toggle('active', k === 'crane' && craneMode);
   });
+  updateChallenge();
   updateProgress();
+}
+function fmtTime(sec) {
+  sec = Math.max(0, Math.ceil(sec));
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+}
+function updateChallenge() {
+  const el = $('#challenge');
+  if (!game) return el.classList.add('hidden');
+  const parts = [];
+  if (game.movesLeft !== null) parts.push(`<span class="ch ${game.movesLeft <= 3 ? 'warn' : ''}">🕹️ ${game.movesLeft}</span>`);
+  if (timeLeft !== null) parts.push(`<span class="ch ${timeLeft <= 10 ? 'warn' : ''}">⏱️ ${fmtTime(timeLeft)}${timerStarted ? '' : ' ⏸'}</span>`);
+  el.innerHTML = parts.join('');
+  el.classList.toggle('hidden', !parts.length);
 }
 function updateProgress() {
   if (!game) return;
@@ -805,14 +869,18 @@ function startLevel(n) {
   game.settle();
   const theme = themeForLevel(n);
   R.setStyle(state.style);
+  R.padding = { top: levelData.moves || levelData.time ? 118 : 96, bottom: 150, side: 10 };
   R.loadLevel(game, theme);
+  previewLevel = 0;
   R.paused = false;
   craneMode = false;
   ended = false;
   usedBoosters = 0;
   usedContinue = 0;
   inGame = true;
-  startSong(theme.id);
+  timeLeft = levelData.time || null;
+  timerStarted = false;
+  startSong(theme.song || theme.id);
   const menu = $('#menu');
   if (!menu.classList.contains('hidden')) {
     menu.classList.add('fade');
@@ -825,9 +893,52 @@ function startLevel(n) {
   else if (n === 3) tip(t('tutorial3'));
   else tip(null);
   refreshHint();
+  // explain rules the player has not seen yet
+  const fresh = mechList(levelData).filter((k) => !state.seenMech?.[k]);
+  if (fresh.length) {
+    state.seenMech = state.seenMech || {};
+    fresh.forEach((k) => (state.seenMech[k] = true));
+    persist();
+    const k = fresh[0];
+    openModal(`
+      <div class="ribbon">${t('newRule')}</div>
+      <div class="big-ico">${MECH_ICON[k]}</div>
+      <h2>${t('mech')[k]}</h2>
+      <p>${t('mechDesc')[k]}</p>
+      <button class="btn" id="mOk">${t('gotIt')}</button>`);
+    $('#mOk').onclick = () => {
+      closeModal();
+      ruleSplash(n, theme);
+    };
+  } else ruleSplash(n, theme);
+}
+
+function ruleSplash(n, theme) {
   if (levelData.difficulty !== 'normal') splash(`${t(levelData.difficulty)}<small>${t('level')} ${n}</small>`, levelData.difficulty === 'superhard' ? 'super' : '');
   else if ((n - 1) % CHAPTER_SIZE === 0 && n > 1) splash(`${theme.name[getLang()]}<small>${t('chapter')} ${chapterOf(n) + 1}</small>`, 'info');
+  else if (levelData.moves) splash(`🕹️ ${levelData.moves}<small>${t('mech').moves}</small>`, 'info');
+  else if (levelData.time) splash(`⏱️ ${fmtTime(levelData.time)}<small>${t('mech').time}</small>`, 'info');
 }
+
+function tickTimer() {
+  if (!inGame || !game || ended || timeLeft === null || !timerStarted || modalOpen() || document.hidden) return;
+  timeLeft -= 0.25;
+  if (timeLeft <= 10 && Math.ceil(timeLeft) !== lastAlarm) {
+    lastAlarm = Math.ceil(timeLeft);
+    sfx.alarm();
+  }
+  if (timeLeft <= 0) {
+    timeLeft = 0;
+    if (game.status === 'playing') {
+      game.status = 'lost';
+      game.loseReason = 'time';
+      ended = true;
+      onLose();
+    }
+  }
+  updateChallenge();
+}
+setInterval(tickTimer, 250);
 
 function refreshHint() {
   if (playing > 2 || !game || game.status !== 'playing') return R.removeHint();
@@ -844,6 +955,7 @@ function onPick(id) {
     const ev = game.crane(id);
     if (!ev) return toast(t('noslot'));
     craneMode = false;
+    timerStarted = true;
     consumeBooster('crane');
     tip(null);
     handleEvents(ev);
@@ -854,7 +966,10 @@ function onPick(id) {
   if (!ev.length) return;
   if (ev[0].type === 'blocked') toast(t('blocked'));
   if (ev[0].type === 'noslot') toast(t('noslot'));
+  if (ev[0].type === 'frozen') toast(`🧊 ${t('frozenMsg').replace('{n}', ev[0].ice)}`);
+  if (ev[0].type === 'exit' || ev[0].type === 'blocked') timerStarted = true;
   handleEvents(ev);
+  updateChallenge();
 }
 
 function handleEvents(ev) {
@@ -874,6 +989,7 @@ function levelReward() {
   let r = replay ? ECONOMY.replayCoins * 2 : ECONOMY.winCoins;
   if (!replay && levelData.difficulty === 'hard') r += ECONOMY.hardBonus;
   if (!replay && levelData.difficulty === 'superhard') r += ECONOMY.superhardBonus;
+  if (!replay) r += 10 * mechList(levelData).length;
   return Math.round(r * M.coinMultiplier(state));
 }
 
@@ -962,41 +1078,58 @@ function showLevelUp(ups) {
   });
 }
 
+const LOSE_INFO = {
+  stuck: { icon: '🚦', cont: 'contAd', contCoins: 'contCoins' },
+  moves: { icon: '🕹️', cont: 'contMovesAd', contCoins: 'contMoves' },
+  time: { icon: '⏰', cont: 'contTimeAd', contCoins: 'contTime' },
+};
 function onLose() {
-  if (!inGame) return;
+  if (!inGame || !game) return;
   sfx.lose();
   haptics.heavy();
+  const reason = game.loseReason || 'stuck';
+  const info = LOSE_INFO[reason];
   const canAfford = state.coins >= ECONOMY.continueCost;
   openModal(`
-    <div class="big-ico">🚦</div>
-    <h2>${t('lose')}</h2>
+    <div class="big-ico">${info.icon}</div>
+    <h2>${t('loseTitle')[reason]}</h2>
     <p>${t('loseSub')}</p>
-    <button class="btn yellow" id="bAd">▶ ${t('contAd')}</button>
-    <button class="btn blue" id="bCoins" ${canAfford ? '' : 'disabled'}>${t('contCoins')} · <span class="coin"></span>${ECONOMY.continueCost}</button>
+    <button class="btn yellow" id="bAd">▶ ${t(info.cont)}</button>
+    <button class="btn blue" id="bCoins" ${canAfford ? '' : 'disabled'}>${t(info.contCoins)} · <span class="coin"></span>${ECONOMY.continueCost}</button>
     <div class="btnrow"><button class="btn ghost" id="bHome">🏠 ${t('home')}</button><button class="btn ghost" id="bRetry">↻ ${t('retry')}</button></div>
   `);
   $('#bAd').onclick = async () => {
     $('#bAd').disabled = true;
-    if (await rewarded()) doContinue();
+    if (await rewarded()) doContinue(reason);
     else $('#bAd').disabled = false;
   };
   $('#bCoins').onclick = () => {
     if (state.coins < ECONOMY.continueCost) return toast(t('notEnough'));
     addCoins(-ECONOMY.continueCost);
-    doContinue();
+    doContinue(reason);
   };
   $('#bRetry').onclick = () => startLevel(playing);
   $('#bHome').onclick = () => showMenu('home');
 }
 
-function doContinue() {
+function doContinue(reason) {
   closeModal();
   usedContinue++;
   ended = false;
-  let ev = game.addSlot();
-  if (!ev) ev = game.sortQueue(40) || [];
+  let ev = [];
+  if (reason === 'moves') {
+    game.addMoves(5);
+    ev = game.settle();
+  } else if (reason === 'time') {
+    timeLeft = 20;
+    game.revive();
+    ev = game.settle();
+  } else {
+    ev = game.addSlot() || game.sortQueue(40) || [];
+  }
   handleEvents(ev);
-  if (game.status === 'lost') {
+  updateChallenge();
+  if (game.status === 'lost' && !ended) {
     ended = true;
     R.whenIdle(onLose, 0.3);
   }
@@ -1122,6 +1255,7 @@ async function boot() {
       stars: saved.stars || {},
       achClaimed: saved.achClaimed || {},
       purchases: saved.purchases || {},
+      seenMech: saved.seenMech || {},
     };
   }
   M.ensureMissions(state);

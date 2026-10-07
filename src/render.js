@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { DIRS, vehicleCells } from './core/logic.js';
+import { DIRS, vehicleCells, MAX_SLOTS } from './core/logic.js';
 import { THEMES } from './theme.js';
 import { sfx } from './audio.js';
 import { haptics } from './platform.js';
@@ -351,7 +351,7 @@ export class Renderer {
       maxZ: game.h + RING + 0.5,
     };
     this.buildEnvironment(game);
-    this.buildSlotPads(game.slots.length);
+    this.buildSlotPads(game);
 
     // vehicles drop in with a bouncy stagger
     const order = game.vehicles.slice().sort((a, b) => a.hy + a.hx * 0.3 - (b.hy + b.hx * 0.3));
@@ -432,7 +432,7 @@ export class Renderer {
     const outerH = H + RING * 2 + 0.5;
     const px = 64;
     const lotTex = canvasTexture(Math.round(outer * px), Math.round(outerH * px), (g, w, h) => {
-      g.fillStyle = '#3c4350';
+      g.fillStyle = this.theme.night ? '#2f3648' : '#6b7287';
       g.fillRect(0, 0, w, h);
       const o = (RING + 0.25) * px;
       g.fillStyle = theme.lot;
@@ -683,12 +683,32 @@ export class Renderer {
         cap.position.y = 0.72 + i * 0.32;
         t.add(cap);
       }
+    } else if (type === 'cactus') {
+      const cm = this.mat(0x4caf50, { roughness: 0.7 });
+      const main = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.6, 4, 8), cm);
+      main.position.y = 0.42;
+      main.castShadow = true;
+      t.add(main);
+      for (const sx of [-1, 1]) {
+        const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.22, 4, 8), cm);
+        arm.position.set(sx * 0.19, 0.5 + rnd() * 0.15, 0);
+        t.add(arm);
+        const join = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.08, 4, 8), cm);
+        join.rotation.z = Math.PI / 2;
+        join.position.set(sx * 0.12, arm.position.y - 0.12, 0);
+        t.add(join);
+      }
+      if (rnd() < 0.5) {
+        const fl = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 5), this.mat(0xff5c8a));
+        fl.position.y = 0.86;
+        t.add(fl);
+      }
     } else {
       const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.42, 8), trunkMat);
       trunk.position.y = 0.21;
       trunk.castShadow = true;
       t.add(trunk);
-      const greens = this.theme.night ? [0x2e6b45, 0x357a4f, 0x285f3d] : [0x4caf50, 0x66c75f, 0x3d9b46];
+      const greens = this.theme.night ? [0x2e6b45, 0x357a4f, 0x285f3d] : type === 'autumn' ? [0xff7a2f, 0xffb000, 0xe2553d] : [0x4caf50, 0x66c75f, 0x3d9b46];
       const lm = this.mat(greens[Math.floor(rnd() * 3)], { flatShading: true, roughness: 0.8 });
       const big = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42, 0), lm);
       big.position.y = 0.65;
@@ -783,28 +803,60 @@ export class Renderer {
     return g;
   }
 
-  buildSlotPads(count) {
+  buildSlotPads(game) {
     if (this.padGroup) this.env.remove(this.padGroup);
     this.padGroup = new THREE.Group();
-    const padTex = canvasTexture(128, 448, (g, w, h) => {
-      g.fillStyle = '#5d6676';
-      g.fillRect(0, 0, w, h);
-      g.strokeStyle = '#ffd34d';
-      g.lineWidth = 8;
-      g.strokeRect(6, 6, w - 12, h - 12);
-      g.fillStyle = 'rgba(255,255,255,0.14)';
-      g.font = 'bold 70px system-ui, sans-serif';
-      g.textAlign = 'center';
-      g.fillText('P', w / 2, h - 40);
-    });
-    const padMat = new THREE.MeshStandardMaterial({ map: padTex, roughness: 0.9 });
+    this.lockedPads = [];
+    const makeTex = (border, fill, label, labelColor) =>
+      canvasTexture(128, 448, (g, w, h) => {
+        g.fillStyle = fill;
+        g.fillRect(0, 0, w, h);
+        g.strokeStyle = border;
+        g.lineWidth = 8;
+        if (label === '+') g.setLineDash([22, 14]);
+        g.strokeRect(6, 6, w - 12, h - 12);
+        g.setLineDash([]);
+        g.fillStyle = labelColor;
+        g.font = 'bold 80px system-ui, sans-serif';
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText(label, w / 2, h - 70);
+      });
+    if (!this.padTex) {
+      this.padTex = {
+        normal: new THREE.MeshStandardMaterial({ map: makeTex('#ffd34d', '#5d6676', 'P', 'rgba(255,255,255,0.15)'), roughness: 0.9 }),
+        locked: new THREE.MeshStandardMaterial({ map: makeTex('#9aa6bb', '#4a5263', '+', 'rgba(140,230,150,0.95)'), roughness: 0.9 }),
+      };
+    }
     const padGeo = new THREE.PlaneGeometry(1.02, 3.95);
-    for (let i = 0; i < count; i++) {
-      const p = new THREE.Mesh(padGeo, padMat);
+    const z = SLOT_HEAD_Z - 0.45 + 3.95 / 2;
+    for (let i = 0; i < MAX_SLOTS; i++) {
+      const locked = i >= game.slots.length;
+      let mat = locked ? this.padTex.locked : this.padTex.normal;
+      const col = !locked && game.slotColors[i];
+      if (col) {
+        const key = 'pad_' + col;
+        if (!this.padTex[key]) {
+          const hex = '#' + new THREE.Color(PALETTE[col]).getHexString();
+          this.padTex[key] = new THREE.MeshStandardMaterial({ map: makeTex(hex, '#5d6676', '★', hex), roughness: 0.9 });
+        }
+        mat = this.padTex[key];
+      }
+      const p = new THREE.Mesh(padGeo, mat);
       p.rotation.x = -Math.PI / 2;
-      p.position.set(this.slotX(i), 0.004, SLOT_HEAD_Z - 0.45 + 3.95 / 2);
+      p.position.set(this.slotX(i), 0.004, z);
       p.receiveShadow = true;
       this.padGroup.add(p);
+      if (col) {
+        const tint = new THREE.Mesh(padGeo, new THREE.MeshBasicMaterial({ color: PALETTE[col], transparent: true, opacity: 0.22, depthWrite: false }));
+        tint.rotation.x = -Math.PI / 2;
+        tint.position.set(this.slotX(i), 0.006, z);
+        this.padGroup.add(tint);
+      }
+      if (locked) {
+        p.userData.lockedSlot = true;
+        this.lockedPads.push(p);
+      }
     }
     this.env.add(this.padGroup);
   }
@@ -1034,15 +1086,103 @@ export class Renderer {
     inner.add(pips);
     parts.pips = pips;
 
+    const casters = new Set(parts.pick);
     inner.traverse((o) => {
       if (o.isMesh) {
-        o.castShadow = true;
+        o.castShadow = casters.has(o);
         o.userData.vid = v.id;
       }
     });
-    arrow.castShadow = false;
     g.userData = { id: v.id, len: v.len, parts, heading: 0, inner, lastPos: new THREE.Vector3(), phase: Math.random() * 6 };
+    if (v.ice > 0) this.addIce(g, v.ice);
     return g;
+  }
+
+  iceLabelTex(n) {
+    return canvasTexture(128, 128, (g, w, h) => {
+      g.clearRect(0, 0, w, h);
+      g.fillStyle = '#ffffff';
+      g.beginPath();
+      g.arc(w / 2, h / 2, 54, 0, Math.PI * 2);
+      g.fill();
+      g.strokeStyle = '#4fb3ff';
+      g.lineWidth = 10;
+      g.stroke();
+      g.fillStyle = '#1b6fd1';
+      g.font = 'bold 76px system-ui, sans-serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(String(n), w / 2, h / 2 + 4);
+    });
+  }
+
+  addIce(m, n) {
+    const L = m.userData.len - 0.1;
+    const ice = new THREE.Group();
+    if (!this.iceTex) {
+      this.iceTex = canvasTexture(128, 256, (g, w, h) => {
+        const gr = g.createLinearGradient(0, 0, w, h);
+        gr.addColorStop(0, '#e8fbff');
+        gr.addColorStop(0.5, '#8fdcff');
+        gr.addColorStop(1, '#c9f1ff');
+        g.fillStyle = gr;
+        g.fillRect(0, 0, w, h);
+        g.strokeStyle = 'rgba(255,255,255,0.9)';
+        g.lineWidth = 4;
+        for (let i = 0; i < 7; i++) {
+          g.beginPath();
+          const x = Math.random() * w,
+            y = Math.random() * h;
+          g.moveTo(x, y);
+          g.lineTo(x + (Math.random() - 0.5) * 60, y + (Math.random() - 0.5) * 80);
+          g.stroke();
+        }
+      });
+    }
+    const block = new THREE.Mesh(
+      this.bodyGeo(0.98, 0.9, L, 0.12),
+      new THREE.MeshStandardMaterial({ map: this.iceTex, color: 0xffffff, transparent: true, opacity: 0.86, roughness: 0.15, emissive: 0x5cc8ff, emissiveIntensity: 0.35 })
+    );
+    block.position.y = 0.45;
+    block.userData.vid = m.userData.id;
+    const label = new THREE.Mesh(new THREE.PlaneGeometry(0.78, 0.78), new THREE.MeshBasicMaterial({ map: this.iceLabelTex(n), transparent: true, depthWrite: false }));
+    label.rotation.x = -Math.PI / 2;
+    label.position.y = 0.95;
+    label.renderOrder = 3;
+    ice.add(block, label);
+    m.userData.inner.add(ice);
+    m.userData.parts.pick.push(block);
+    m.userData.ice = { group: ice, label, block };
+  }
+
+  setIce(id, n) {
+    const m = this.vehMeshes.get(id);
+    if (!m || !m.userData.ice) return;
+    const ice = m.userData.ice;
+    if (n > 0) {
+      ice.label.material.map = this.iceLabelTex(n);
+      ice.label.material.needsUpdate = true;
+      this.pop(ice.label, 0.25, 0.3);
+      return;
+    }
+    // shatter
+    m.userData.inner.remove(ice.group);
+    m.userData.ice = null;
+    const shardMat = new THREE.MeshStandardMaterial({ color: 0xd8f3ff, transparent: true, opacity: 0.9, roughness: 0.1 });
+    for (let i = 0; i < 12; i++) {
+      const sh = new THREE.Mesh(this.geo.puff, shardMat.clone());
+      const x = m.position.x,
+        z = m.position.z;
+      const a = Math.random() * Math.PI * 2;
+      const sp = 0.6 + Math.random() * 0.9;
+      const vy = 1.5 + Math.random() * 2;
+      this.fxGroup.add(sh);
+      this.tween(this.time, 0.6, (k) => {
+        sh.position.set(x + Math.cos(a) * sp * k, 0.5 + vy * k - 3 * k * k, z + Math.sin(a) * sp * k);
+        sh.rotation.set(k * 8, k * 6, 0);
+        sh.material.opacity = 0.9 * (1 - k);
+      }, () => this.fxGroup.remove(sh));
+    }
   }
 
   placeInLot(m, v) {
@@ -1333,6 +1473,7 @@ export class Renderer {
         }
         case 'crane': {
           const m = this.vehMeshes.get(ev.id);
+          if (m && m.userData.ice) this.setIce(ev.id, 0);
           const from = m.position.clone();
           const fromH = m.userData.heading;
           const half = (m.userData.len - 1) / 2 + 0.5 - 0.08;
@@ -1384,10 +1525,28 @@ export class Renderer {
           break;
         }
         case 'addslot': {
-          this.buildSlotPads(game.slots.length);
+          this.buildSlotPads(game);
           sfx.booster();
           const x = this.slotX(ev.slot);
           this.sparkle(x, 0.3, SLOT_HEAD_Z + 1.5, 0xffd34d, 14);
+          break;
+        }
+        case 'ice': {
+          this.at(now + 0.1, () => this.setIce(ev.id, ev.ice));
+          break;
+        }
+        case 'thaw': {
+          this.at(now + 0.1, () => {
+            this.setIce(ev.id, 0);
+            sfx.shatter && sfx.shatter();
+          });
+          break;
+        }
+        case 'frozen': {
+          const m = this.vehMeshes.get(ev.id);
+          if (m) this.shake(m);
+          sfx.bump();
+          haptics.medium();
           break;
         }
         case 'queue': {
@@ -1597,6 +1756,9 @@ export class Renderer {
       if (m) targets.push(...m.userData.parts.pick);
     }
     const hits = this.raycaster.intersectObjects(targets, false);
+    if (!hits.length && this.lockedPads && this.lockedPads.length && this.onLockedSlot) {
+      if (this.raycaster.intersectObjects(this.lockedPads, false).length) return this.onLockedSlot();
+    }
     if (hits.length) {
       this.onPick(hits[0].object.userData.vid);
       return;
