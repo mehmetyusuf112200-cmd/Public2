@@ -29,9 +29,9 @@
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="@string/admob_app_id" />
 
-        <meta-data
-            android:name="com.google.android.gms.games.APP_ID"
-            android:value="@string/game_services_project_id" />
+        <!-- Play Games: when game_services_project_id is set, add:
+        <meta-data android:name="com.google.android.gms.games.APP_ID" android:value="@string/game_services_project_id" />
+        -->
 
         <provider
             android:name="androidx.core.content.FileProvider"
