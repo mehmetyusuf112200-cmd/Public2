@@ -1,11 +1,6 @@
 // ---------------------------------------------------------------------------
-// AdMob settings.
-// These are Google's official TEST ad unit IDs. Before releasing:
-//   1. Create the app in AdMob (https://apps.admob.com) -> get the App ID
-//      (ca-app-pub-8983296148880903~XXXXXXXXXX) and put it into
-//      android/app/src/main/res/values/strings.xml  (admob_app_id)
-//   2. Create one Interstitial and one Rewarded ad unit, paste their IDs below
-//   3. Set testing: false
+// AdMob settings — real IDs of the "Commute Craze" app in AdMob.
+// App ID (strings.xml admob_app_id): ca-app-pub-8983296148880903~8188694706
 // ---------------------------------------------------------------------------
 export const ADS = {
   testing: false,
