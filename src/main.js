@@ -5,7 +5,7 @@ import { Game, generateLevel, levelParams, levelMechanics, MAX_LEVEL } from './c
 import { Renderer } from './render.js';
 import { t, setLang, getLang, fmt, LANGS, detectLang, dayLabel } from './i18n.js';
 import { sfx, unlockAudio, setSfx, setMusic, suspendAudio, resumeAudio, audioState, startSong } from './audio.js';
-import { loadSave, writeSave, haptics, initAds, maybeInterstitial, setPlaying, showRewarded, showPrivacyOptions, onBackButton, onPause, isNative } from './platform.js';
+import { loadSave, writeSave, haptics, initAds, maybeInterstitial, setPlaying, setAdAudioHooks, showRewarded, lastRewardResult, showPrivacyOptions, onBackButton, onPause, isNative } from './platform.js';
 import { ECONOMY, PRIVACY_URL } from './config.js';
 import { THEMES, STYLES, themeForLevel, chapterOf, CHAPTER_SIZE } from './theme.js';
 import * as M from './meta.js';
@@ -244,7 +244,7 @@ async function rewarded() {
   if (ok) {
     state.stats.ads = (state.stats.ads || 0) + 1;
     persist();
-  } else toast(t('adFail'));
+  } else if (lastRewardResult === 'noad') toast(t('adFail'));
   return ok;
 }
 
@@ -1649,6 +1649,7 @@ async function boot() {
     showMenu('home');
   } else showMenu('home');
 
+  setAdAudioHooks(suspendAudio, resumeAudio);
   initAds();
   initIAP().then(async (ok) => {
     if (ok) {
@@ -1725,7 +1726,8 @@ async function boot() {
       }
     }
   });
-  window.__cc = {
+  // debug / store-visual hook - only in dev builds (not in the shipped app)
+  if (import.meta.env.DEV || location.search.includes('promo')) window.__cc = {
     get state() {
       return state;
     },

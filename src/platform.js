@@ -64,38 +64,95 @@ export function onPause(handler) {
 //   * every ADS.interstitialEveryNLevels won levels
 //   * every ADS.timedEverySec seconds of active play ("every 3 minutes")
 // and never closer together than ADS.interstitialCooldownSec.
+//
+// The AdMob plugin resolves showRewardVideoAd() ONLY when a reward is earned
+// and showInterstitial() as soon as the ad opens, so both are driven by the
+// plugin's Dismissed / FailedToShow events instead (otherwise closing a
+// rewarded ad early froze the button and the game kept running behind ads).
+const EV = {
+  intDismissed: 'interstitialAdDismissed',
+  intFailedShow: 'interstitialAdFailedToShow',
+  rewRewarded: 'onRewardedVideoAdReward',
+  rewDismissed: 'onRewardedVideoAdDismissed',
+  rewFailedShow: 'onRewardedVideoAdFailedToShow',
+};
 let adsReady = false;
 let lastInterstitial = Date.now();
-let interstitialLoaded = false;
-let rewardLoaded = false;
+const loaded = { level: false, timed: false, reward: false };
+const loading = { level: false, timed: false, reward: false };
+const retryDelay = { level: 15, timed: 15, reward: 15 };
 let playingNow = false;
 let playSinceAd = 0;
+let adOnScreen = false;
+let audioHooks = { pause: () => {}, resume: () => {} };
 
 setInterval(() => {
-  if (playingNow && !document.hidden) playSinceAd++;
+  if (playingNow && !document.hidden && !adOnScreen) playSinceAd++;
 }, 1000);
 /** true while a level is on screen and not paused */
 export function setPlaying(v) {
   playingNow = !!v;
 }
+/** main.js passes its audio suspend/resume so music stops while an ad plays */
+export function setAdAudioHooks(pause, resume) {
+  audioHooks = { pause, resume };
+}
+export function adIsOnScreen() {
+  return adOnScreen;
+}
 
-async function preloadInterstitial() {
-  if (!adsReady || interstitialLoaded) return;
+const UNIT = () => ({ level: ADS.interstitialId, timed: ADS.timedInterstitialId || ADS.interstitialId, reward: ADS.rewardedId });
+
+async function preload(kind) {
+  if (!adsReady || loaded[kind] || loading[kind]) return;
+  loading[kind] = true;
   try {
-    await AdMob.prepareInterstitial({ adId: ADS.interstitialId, isTesting: ADS.testing });
-    interstitialLoaded = true;
+    const opts = { adId: UNIT()[kind], isTesting: ADS.testing };
+    if (kind === 'reward') await AdMob.prepareRewardVideoAd(opts);
+    else await AdMob.prepareInterstitial(opts);
+    loaded[kind] = true;
+    retryDelay[kind] = 15;
   } catch {
-    interstitialLoaded = false;
+    loaded[kind] = false;
+    // no fill / offline: try again later with back-off (15 s ... 5 min)
+    const d = retryDelay[kind];
+    retryDelay[kind] = Math.min(300, d * 2);
+    setTimeout(() => preload(kind), d * 1000);
+  } finally {
+    loading[kind] = false;
   }
 }
-async function preloadReward() {
-  if (!adsReady || rewardLoaded) return;
-  try {
-    await AdMob.prepareRewardVideoAd({ adId: ADS.rewardedId, isTesting: ADS.testing });
-    rewardLoaded = true;
-  } catch {
-    rewardLoaded = false;
-  }
+
+/**
+ * Registers listeners for `events`; resolves (once registered) with { done },
+ * a promise for the name of the first event that fires (or 'timeout').
+ */
+async function firstEvent(events, timeoutMs) {
+  let finish;
+  const result = new Promise((resolve) => (finish = resolve));
+  let done = false;
+  const handles = await Promise.all(
+    events.map((e) =>
+      AdMob.addListener(e, () => {
+        if (done) return;
+        done = true;
+        finish(e);
+      }).catch(() => null)
+    )
+  );
+  const timer = setTimeout(() => {
+    if (!done) {
+      done = true;
+      finish('timeout');
+    }
+  }, timeoutMs);
+  return {
+    done: result.then((name) => {
+      clearTimeout(timer);
+      handles.forEach((h) => h && h.remove().catch(() => {}));
+      return name;
+    }),
+  };
 }
 
 export async function initAds() {
@@ -111,8 +168,9 @@ export async function initAds() {
       /* consent is best-effort */
     }
     adsReady = true;
-    preloadInterstitial();
-    preloadReward();
+    preload('reward');
+    preload('level');
+    if (ADS.timedInterstitialId) preload('timed');
   } catch {
     adsReady = false;
   }
@@ -129,63 +187,99 @@ export async function showPrivacyOptions() {
 }
 
 /**
- * Call at a natural break.
+ * Call at a natural break. Resolves after the ad was closed (or right away
+ * when no ad is due / available).
  * progress  = player's current level (no ads during the first levels)
  * wonLevel  = level just won (null for retry / back-to-menu breaks)
  */
 export async function maybeInterstitial(noAds, { progress = 0, wonLevel = null } = {}) {
-  if (noAds) return false;
+  if (noAds || adOnScreen) return false;
   if (progress < ADS.interstitialFromLevel) return false;
   if ((Date.now() - lastInterstitial) / 1000 < ADS.interstitialCooldownSec) return false;
   const timed = playSinceAd >= ADS.timedEverySec;
   const byLevel = wonLevel != null && wonLevel % ADS.interstitialEveryNLevels === 0;
   if (!timed && !byLevel) return false;
   if (!isNative || !adsReady) return false;
-  // the 3-minute break has its own ad unit so it shows up separately in AdMob reports.
-  // The plugin holds one interstitial at a time, so it is loaded on demand.
-  const useTimed = timed && !!ADS.timedInterstitialId;
-  let shown = false;
-  try {
-    if (useTimed) {
-      interstitialLoaded = false;
-      await Promise.race([
-        AdMob.prepareInterstitial({ adId: ADS.timedInterstitialId, isTesting: ADS.testing }),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000)),
-      ]);
-    } else if (!interstitialLoaded) return false;
-    interstitialLoaded = false;
-    await AdMob.showInterstitial();
-    shown = true;
-    lastInterstitial = Date.now();
-    playSinceAd = 0;
-  } catch {
-    /* no fill / timeout: try again at the next break */
+  // prefer the unit that matches the trigger, fall back to the other one
+  let kind = timed && loaded.timed ? 'timed' : loaded.level ? 'level' : loaded.timed ? 'timed' : null;
+  if (!kind) {
+    preload('level');
+    if (ADS.timedInterstitialId) preload('timed');
+    return false;
   }
-  preloadInterstitial();
+  let shown = false;
+  adOnScreen = true;
+  audioHooks.pause();
+  try {
+    loaded[kind] = false;
+    const closed = await firstEvent([EV.intDismissed, EV.intFailedShow], 90000);
+    await AdMob.showInterstitial({ adId: UNIT()[kind] });
+    const how = await closed.done;
+    shown = how !== EV.intFailedShow;
+    if (shown) {
+      lastInterstitial = Date.now();
+      playSinceAd = 0;
+    }
+  } catch {
+    /* not shown: try again at the next break */
+  } finally {
+    adOnScreen = false;
+    audioHooks.resume();
+    preload(kind);
+  }
   return shown;
 }
 
-/** resolves true if the user earned the reward */
+/** true when a rewarded ad is ready to play right now */
+export function rewardedReady() {
+  return !isNative || loaded.reward;
+}
+
+/** why the last showRewarded() returned: 'earned' | 'closed' (closed early) | 'noad' */
+export let lastRewardResult = 'noad';
+
+/** resolves true if the user earned the reward (false if closed early / no ad) */
 export async function showRewarded() {
+  lastRewardResult = 'noad';
   if (!isNative) {
     // browser preview: simulate a short ad
     await new Promise((r) => setTimeout(r, 600));
+    lastRewardResult = 'earned';
     return true;
   }
-  if (!adsReady) return false;
-  if (!rewardLoaded) {
-    await preloadReward();
-    if (!rewardLoaded) return false;
+  if (!adsReady || adOnScreen) return false;
+  if (!loaded.reward) {
+    // give a just-started load a few seconds to finish
+    preload('reward');
+    for (let i = 0; i < 16 && !loaded.reward; i++) await new Promise((r) => setTimeout(r, 250));
+    if (!loaded.reward) return false;
   }
+  adOnScreen = true;
+  audioHooks.pause();
+  let earned = false;
+  const rewardSub = AdMob.addListener(EV.rewRewarded, () => (earned = true)).catch(() => null);
   try {
-    rewardLoaded = false;
-    const item = await AdMob.showRewardVideoAd();
-    playSinceAd = 0;
-    lastInterstitial = Date.now(); // don't stack an interstitial right after a rewarded ad
-    preloadReward();
-    return !!item;
+    await rewardSub;
+    loaded.reward = false;
+    const closed = await firstEvent([EV.rewDismissed, EV.rewFailedShow], 180000);
+    AdMob.showRewardVideoAd()
+      .then(() => (earned = true))
+      .catch(() => {});
+    await closed.done;
+    // the reward callback can arrive a moment after the close event
+    if (!earned) await new Promise((r) => setTimeout(r, 400));
+    lastRewardResult = earned ? 'earned' : 'closed';
+    if (earned) {
+      playSinceAd = 0;
+      lastInterstitial = Date.now(); // don't stack an interstitial right after a rewarded ad
+    }
   } catch {
-    preloadReward();
-    return false;
+    earned = false;
+  } finally {
+    rewardSub.then((h) => h && h.remove()).catch(() => {});
+    adOnScreen = false;
+    audioHooks.resume();
+    preload('reward');
   }
+  return earned;
 }

@@ -3,7 +3,9 @@
 // App ID (strings.xml admob_app_id): ca-app-pub-8983296148880903~8188694706
 // ---------------------------------------------------------------------------
 export const ADS = {
-  testing: false,
+  // The TEST apk is built with VITE_ADS_TEST=1 and shows Google's test ads (always
+  // available, safe to click). The Play Store build uses the real units below.
+  testing: import.meta.env.VITE_ADS_TEST === '1',
   interstitialId: 'ca-app-pub-8983296148880903/3702654782',
   rewardedId: 'ca-app-pub-8983296148880903/8828567964',
   interstitialFromLevel: 6, // no interstitials during the first levels

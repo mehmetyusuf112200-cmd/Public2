@@ -30,13 +30,6 @@ jobs:
           npm ci
           npm test
 
-      - name: Build web & sync
-        env:
-          VERSION_NAME: 1.0.${{ github.run_number }}
-        run: |
-          npm run build
-          npx cap sync android
-
       # Signing key comes from repository secrets (Settings > Secrets and variables > Actions).
       # If the secrets are missing the AAB is built unsigned.
       - name: Restore signing key
@@ -51,18 +44,35 @@ jobs:
             echo "SIGNED=0" >> "$GITHUB_ENV"
           fi
 
-      - name: Build APK (test) and AAB (Play Store)
-        working-directory: android
+      # TEST apk: Google test ads (always fill, safe to tap) so ads can be checked on a phone.
+      - name: Build TEST APK (test ads)
         env:
-          VERSION_CODE: ${{ github.run_number }}
           VERSION_NAME: 1.0.${{ github.run_number }}
+          VERSION_CODE: ${{ github.run_number }}
+          VITE_ADS_TEST: '1'
+        run: |
+          npm run build
+          npx cap sync android
+          cd android
+          chmod +x gradlew
+          set -o pipefail
+          ./gradlew --no-daemon --stacktrace assembleDebug 2>&1 | tee ../gradle.log
+
+      # Play Store AAB: real AdMob ad units.
+      - name: Build Play Store AAB (real ads)
+        env:
+          VERSION_NAME: 1.0.${{ github.run_number }}
+          VERSION_CODE: ${{ github.run_number }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          chmod +x gradlew
+          npm run build
+          grep -q "3940256099942544" dist/assets/*.js && echo "::warning::test ad ids found in release bundle" || true
+          npx cap sync android
+          cd android
           set -o pipefail
-          ./gradlew --no-daemon --stacktrace assembleDebug bundleRelease 2>&1 | tee ../gradle.log
+          ./gradlew --no-daemon --stacktrace bundleRelease 2>&1 | tee -a ../gradle.log
 
       - name: Collect outputs
         run: |
@@ -87,8 +97,8 @@ jobs:
           name: Commute Craze v1.0.${{ github.run_number }}
           make_latest: true
           body: |
-            📱 **Telefonda test:** `CommuteCraze-TEST.apk` dosyasını telefondan indirip kur (Bilinmeyen kaynaklara izin ver).
-            🏪 **Play Store:** `CommuteCraze-PlayStore.aab` dosyasını Play Console'a yükle.
+            📱 **Telefonda test:** `CommuteCraze-TEST.apk` dosyasını telefondan indirip kur (Bilinmeyen kaynaklara izin ver). Bu sürümde Google **test reklamları** çıkar (\"Test Ad\" yazar) – tıklamak güvenli.
+            🏪 **Play Store:** `CommuteCraze-PlayStore.aab` dosyasını Play Console'a yükle (gerçek reklamlar).
             ${{ env.SIGNED == '1' && '✅ AAB yükleme anahtarıyla imzalı.' || '⚠️ AAB imzasız — GitHub Secrets ayarlanmamış (README''ye bak).' }}
           files: out/*
 
