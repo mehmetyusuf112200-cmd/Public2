@@ -38,7 +38,7 @@ jobs:
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
             # tolerate spaces/newlines added when the secret was pasted
-            printf '%s' "$KEYSTORE_BASE64" | tr -d ' \r\n\t' | base64 -d > "$RUNNER_TEMP/upload.jks" || { echo "::error::KEYSTORE_BASE64 is not valid base64 (length ${#KEYSTORE_BASE64})"; exit 1; }
+            printf '%s' "$KEYSTORE_BASE64" | tr -d ' \r\n\t' | base64 -d > "$RUNNER_TEMP/upload.jks" || { echo "::warning::KEYSTORE_BASE64 is not valid base64 (length ${#KEYSTORE_BASE64}) - building an UNSIGNED AAB. Fix the secret (README)."; rm -f "$RUNNER_TEMP/upload.jks"; echo "SIGNED=0" >> "$GITHUB_ENV"; exit 0; }
             echo "keystore bytes: $(wc -c < "$RUNNER_TEMP/upload.jks")"
             echo "KEYSTORE_FILE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
             echo "SIGNED=1" >> "$GITHUB_ENV"
@@ -46,7 +46,7 @@ jobs:
             echo "SIGNED=0" >> "$GITHUB_ENV"
           fi
 
-      # TEST apk: Google test ads (always fill, safe to tap) so ads can be checked on a phone.
+      # TEST apk: Unity Ads test mode (safe to tap) so ads can be checked on a phone.
       - name: Build TEST APK (test ads)
         env:
           VERSION_NAME: 1.0.${{ github.run_number }}
@@ -60,7 +60,7 @@ jobs:
           set -o pipefail
           ./gradlew --no-daemon --stacktrace assembleDebug 2>&1 | tee ../gradle.log
 
-      # Play Store AAB: real AdMob ad units.
+      # Play Store AAB: real Unity Ads placements.
       - name: Build Play Store AAB (real ads)
         env:
           VERSION_NAME: 1.0.${{ github.run_number }}
@@ -99,7 +99,7 @@ jobs:
           name: Commute Craze v1.0.${{ github.run_number }}
           make_latest: true
           body: |
-            📱 **Telefonda test:** `CommuteCraze-TEST.apk` dosyasını telefondan indirip kur (Bilinmeyen kaynaklara izin ver). Bu sürümde Google **test reklamları** çıkar (\"Test Ad\" yazar) – tıklamak güvenli.
+            📱 **Telefonda test:** `CommuteCraze-TEST.apk` dosyasını telefondan indirip kur (Bilinmeyen kaynaklara izin ver). Bu sürümde Unity **test reklamları** çıkar – tıklamak güvenli.
             🏪 **Play Store:** `CommuteCraze-PlayStore.aab` dosyasını Play Console'a yükle (gerçek reklamlar).
             ${{ env.SIGNED == '1' && '✅ AAB yükleme anahtarıyla imzalı.' || '⚠️ AAB imzasız — GitHub Secrets ayarlanmamış (README''ye bak).' }}
           files: out/*
