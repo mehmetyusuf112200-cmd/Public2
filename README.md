@@ -33,16 +33,15 @@ Bu linkler hiç değişmez: koda her değişiklik gönderildiğinde GitHub oyunu
 
 Secrets yoksa AAB yine üretilir ama imzasız olur (sürüm notunda ⚠️ yazar). **Anahtar dosyası bu repoya asla konmaz** (repo herkese açık).
 
-## 💰 Reklamlar (AdMob)
-Gerçek reklamlar açık (AdMob uygulaması *Commute Craze*, `ca-app-pub-8983296148880903~8188694706`):
+## 💰 Reklamlar (Unity Ads)
+AdMob kaldırıldı; reklamlar **Unity Ads** üzerinden gelir (Unity uygulaması *Commute Craze: Bus Jam Puzzle*, Game ID `800408333`).
 
 | Birim | Kimlik | Ne zaman |
 |---|---|---|
-| CC Interstitial (geçiş) | `ca-app-pub-8983296148880903/3702654782` | 6. bölümden sonra, her 3 bölümde bir |
-| CC Interstitial 3dk (geçiş) | `ca-app-pub-8983296148880903/2002385294` | 3 dakika oynadıktan sonraki ilk molada (AdMob'da kullanıcı başına 3 dk'da en fazla 1) |
-| CC Rewarded (ödüllü) | `ca-app-pub-8983296148880903/8828567964` | x2 ödül, devam, ücretsiz coin, çark |
+| Geçiş (Interstitial) | `BP_Interstitial_Android` | 6. bölümden sonra her 3 bölümde bir, ya da 3 dakika oynadıktan sonraki ilk molada |
+| Ödüllü (Rewarded) | `BP_Rewarded_Android` | x2 ödül, devam, ücretsiz coin, çark |
 
-Geçiş reklamları yalnızca doğal molalarda çıkar (bölüm sonu, tekrar dene, ana menü) – bölüm ortasında asla. İki geçiş reklamı arası en az 2 dakika. Ayarlar: `src/config.js`. ⚠️ Kendi reklamlarına tıklama; telefonunu AdMob → Ayarlar → Test cihazları'na ekle.
+Geçiş reklamları yalnızca doğal molalarda çıkar (bölüm sonu, tekrar dene, ana menü) – bölüm ortasında asla. İki geçiş reklamı arası en az 2 dakika. Ayarlar: `src/config.js`. Yerel köprü: `android/app/src/main/java/com/mehmetyusuf/commutecraze/UnityAdsPlugin.java`. TEST apk Unity test reklamlarını gösterir. ⚠️ Gerçek sürümde kendi reklamlarına tıklama.
 
 ## 🛒 Uygulama içi satın almalar (Play Console → Para kazanma → Uygulama içi ürünler)
 Bu ID'lerle ürün oluşturulur (fiyatı sen belirlersin, oyun fiyatı Play'den otomatik çeker):
