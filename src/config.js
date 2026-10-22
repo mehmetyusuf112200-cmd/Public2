@@ -1,20 +1,20 @@
 // ---------------------------------------------------------------------------
-// AdMob settings — real IDs of the "Commute Craze" app in AdMob.
-// App ID (strings.xml admob_app_id): ca-app-pub-8983296148880903~8188694706
+// Unity Ads settings (Unity Dashboard > Monetization > Commute Craze).
+// AdMob was removed in favour of Unity Ads.
 // ---------------------------------------------------------------------------
 export const ADS = {
-  // The TEST apk is built with VITE_ADS_TEST=1 and shows Google's test ads (always
-  // available, safe to click). The Play Store build uses the real units below.
+  // The TEST apk is built with VITE_ADS_TEST=1 and shows Unity test ads (safe to
+  // click). The Play Store build serves real ads.
   testing: import.meta.env.VITE_ADS_TEST === '1',
-  interstitialId: 'ca-app-pub-8983296148880903/3702654782',
-  rewardedId: 'ca-app-pub-8983296148880903/8828567964',
+  gameId: '800408333',
+  interstitialId: 'BP_Interstitial_Android',
+  rewardedId: 'BP_Rewarded_Android',
   interstitialFromLevel: 6, // no interstitials during the first levels
   interstitialEveryNLevels: 3,
   interstitialCooldownSec: 120,
   // "every 3 minutes" break: after 180 s of active play the next natural break
-  // (level end, retry, back to menu) shows an interstitial from its own ad unit
+  // (level end, retry, back to menu) shows an interstitial
   timedEverySec: 180,
-  timedInterstitialId: 'ca-app-pub-8983296148880903/2002385294', // AdMob: max 1 per user per 3 min
 };
 
 // ---------------------------------------------------------------------------
