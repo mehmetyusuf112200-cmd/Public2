@@ -34,7 +34,7 @@ Bu linkler hiç değişmez: koda her değişiklik gönderildiğinde GitHub oyunu
 Secrets yoksa AAB yine üretilir ama imzasız olur (sürüm notunda ⚠️ yazar). **Anahtar dosyası bu repoya asla konmaz** (repo herkese açık).
 
 ## 💰 Reklamlar (Unity Ads)
-AdMob kaldırıldı; reklamlar **Unity Ads** üzerinden gelir (Unity uygulaması *Commute Craze: Bus Jam Puzzle*, Game ID `800408333`).
+AdMob kaldırıldı; reklamlar **Unity Ads** üzerinden gelir (Unity uygulaması *Commute Craze: Bus Jam Puzzle*, Game ID `800410220`).
 
 | Birim | Kimlik | Ne zaman |
 |---|---|---|

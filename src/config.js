@@ -6,7 +6,7 @@ export const ADS = {
   // The TEST apk is built with VITE_ADS_TEST=1 and shows Unity test ads (safe to
   // click). The Play Store build serves real ads.
   testing: import.meta.env.VITE_ADS_TEST === '1',
-  gameId: '800408333',
+  gameId: '800410220',
   interstitialId: 'BP_Interstitial_Android',
   rewardedId: 'BP_Rewarded_Android',
   interstitialFromLevel: 6, // no interstitials during the first levels
